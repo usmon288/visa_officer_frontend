@@ -1,142 +1,115 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, MessageSquare, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AICharacter } from "@/components/AICharacter";
-import { ChatBubble } from "@/components/ChatBubble";
-import { ChatInput } from "@/components/ChatInput";
-
-type ChatType = "ielts" | "job" | "visa";
+import { AnimatedCharacter } from "@/components/AnimatedCharacter";
+import { TranscriptDisplay } from "@/components/TranscriptDisplay";
+import { VoiceInterface } from "@/components/VoiceInterface";
+import { AGENT_IDS, InterviewType } from "@/lib/elevenlabs-agents";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
   text: string;
   isUser: boolean;
+  timestamp: Date;
 }
 
-const initialQuestions: Record<ChatType, string[]> = {
-  ielts: [
-    "Hello! I'm Emma, your IELTS examiner today. Let's begin with Part 1. Can you tell me about your hometown?",
-    "That's interesting! What do you like most about living there?",
-    "Thank you. Now, let's move to Part 2. I'd like you to describe a memorable trip you have taken.",
-    "Excellent description! For Part 3, do you think travel is important for personal development? Why?",
-    "Great insights! That concludes our speaking test. Thank you for your responses.",
-  ],
-  job: [
-    "Good morning! I'm Michael from HR. Welcome to your interview. Could you start by telling me about yourself?",
-    "Thank you for sharing that. What interests you about this position?",
-    "I see. Can you describe a challenging situation you faced at work and how you handled it?",
-    "That's a good example. Where do you see yourself in five years?",
-    "Wonderful! Do you have any questions for me about the role or the company?",
-  ],
-  visa: [
-    "Hello, I'm Officer Sarah. I'll be conducting your visa interview today. What is the purpose of your visit?",
-    "I understand. How long do you plan to stay, and where will you be staying?",
-    "Thank you. What do you do for a living in your home country?",
-    "I see. Can you tell me about your ties to your home country that would ensure your return?",
-    "Thank you for your answers. Your application will be processed shortly.",
-  ],
+const pageConfig = {
+  ielts: {
+    title: "IELTS Speaking Test",
+    subtitle: "Practice with our AI examiner",
+    gradient: "from-ielts/20 to-ielts/5",
+    tips: [
+      "Speak clearly and at a natural pace",
+      "Provide detailed answers with examples",
+      "Don't worry about minor mistakes",
+    ],
+  },
+  job: {
+    title: "Job Interview",
+    subtitle: "Practice with our AI HR manager",
+    gradient: "from-job/20 to-job/5",
+    tips: [
+      "Be confident and professional",
+      "Share specific examples from your experience",
+      "Show enthusiasm for the role",
+    ],
+  },
+  visa: {
+    title: "Visa Interview",
+    subtitle: "Practice with our AI visa officer",
+    gradient: "from-visa/20 to-visa/5",
+    tips: [
+      "Be honest and consistent in your answers",
+      "Explain your travel purpose clearly",
+      "Demonstrate ties to your home country",
+    ],
+  },
 };
 
 const ChatPage = () => {
-  const { type } = useParams<{ type: ChatType }>();
+  const { type } = useParams<{ type: string }>();
   const navigate = useNavigate();
-  const chatType = (type as ChatType) || "ielts";
+  const chatType = (type as InterviewType) || "ielts";
+  const config = pageConfig[chatType];
+  const agentId = AGENT_IDS[chatType];
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [isTyping, setIsTyping] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [showTips, setShowTips] = useState(true);
+  const [interviewEnded, setInterviewEnded] = useState(false);
 
-  const questions = initialQuestions[chatType];
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
-
-  // Initial AI message
-  useEffect(() => {
-    setIsTyping(true);
-    const timer = setTimeout(() => {
-      setMessages([
-        {
-          id: "1",
-          text: questions[0],
-          isUser: false,
-        },
-      ]);
-      setIsTyping(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [chatType]);
-
-  const handleSendMessage = (text: string) => {
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      isUser: true,
-    };
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Check if interview is complete
-    if (currentQuestionIndex >= questions.length - 1) {
-      setIsComplete(true);
-      setTimeout(() => {
-        navigate(`/result/${chatType}`);
-      }, 1500);
-      return;
+  const handleTranscriptUpdate = useCallback((userText: string, aiText: string) => {
+    if (userText) {
+      setMessages(prev => [...prev, {
+        id: `user-${Date.now()}`,
+        text: userText,
+        isUser: true,
+        timestamp: new Date(),
+      }]);
+      setIsListening(true);
     }
-
-    // AI response
-    setIsTyping(true);
-    const nextIndex = currentQuestionIndex + 1;
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: questions[nextIndex],
+    if (aiText) {
+      setMessages(prev => [...prev, {
+        id: `ai-${Date.now()}`,
+        text: aiText,
         isUser: false,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      setCurrentQuestionIndex(nextIndex);
-      setIsTyping(false);
-    }, 2000);
-  };
+        timestamp: new Date(),
+      }]);
+      setIsListening(false);
+    }
+  }, []);
 
-  const handleRestart = () => {
-    setMessages([]);
-    setCurrentQuestionIndex(0);
-    setIsComplete(false);
-    setIsTyping(true);
+  const handleSpeakingChange = useCallback((speaking: boolean) => {
+    setIsSpeaking(speaking);
+    if (speaking) {
+      setShowTips(false);
+      setIsListening(false);
+    }
+  }, []);
+
+  const handleInterviewEnd = useCallback(() => {
+    setInterviewEnded(true);
+    // Build transcript from messages
+    const transcript = messages.map(m => 
+      `${m.isUser ? 'Candidate' : 'Interviewer'}: ${m.text}`
+    ).join('\n\n');
+    
+    // Navigate to result with transcript
     setTimeout(() => {
-      setMessages([
-        {
-          id: "1",
-          text: questions[0],
-          isUser: false,
-        },
-      ]);
-      setIsTyping(false);
+      navigate(`/result/${chatType}`, { 
+        state: { transcript, messages } 
+      });
     }, 1500);
-  };
-
-  const pageTitle = {
-    ielts: "IELTS Speaking Test",
-    job: "Job Interview",
-    visa: "Visa Interview",
-  };
+  }, [messages, chatType, navigate]);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-muted/30">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
+      <header className="sticky top-0 z-10 border-b bg-card/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <Button
             variant="ghost"
             size="sm"
@@ -147,60 +120,88 @@ const ChatPage = () => {
             Back
           </Button>
 
-          <h1 className="font-semibold text-foreground">{pageTitle[chatType]}</h1>
+          <div className="text-center">
+            <h1 className="font-bold text-foreground">{config.title}</h1>
+            <p className="text-xs text-muted-foreground">{config.subtitle}</p>
+          </div>
 
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleRestart}
+            onClick={() => setShowTips(!showTips)}
             className="h-9 w-9"
           >
-            <RotateCcw className="h-4 w-4" />
+            <Info className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      {/* AI Character */}
-      <div className="border-b bg-card/50 py-6">
-        <AICharacter variant={chatType} isSpeaking={isTyping} className="mx-auto" />
-      </div>
-
-      {/* Chat Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="mx-auto max-w-2xl space-y-4">
-          {messages.map((message, index) => (
-            <ChatBubble
-              key={message.id}
-              message={message.text}
-              isUser={message.isUser}
-              variant={chatType}
-              delay={index === messages.length - 1 ? 0 : 0}
+      {/* Main content */}
+      <main className="flex flex-1 flex-col">
+        {/* Character section */}
+        <div className={cn(
+          "border-b py-8 bg-gradient-to-b",
+          config.gradient
+        )}>
+          <div className="mx-auto max-w-4xl px-4">
+            <AnimatedCharacter 
+              variant={chatType} 
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+              className="mx-auto"
             />
-          ))}
+          </div>
+        </div>
 
-          {isTyping && (
-            <ChatBubble
-              message=""
-              isUser={false}
+        {/* Tips panel */}
+        {showTips && messages.length === 0 && (
+          <div className="border-b bg-muted/30 py-4 animate-fade-in">
+            <div className="mx-auto max-w-4xl px-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/20">
+                  <MessageSquare className="h-4 w-4 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Tips for success:</h3>
+                  <ul className="space-y-1">
+                    {config.tips.map((tip, i) => (
+                      <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transcript section */}
+        <div className="flex-1 overflow-hidden">
+          <div className="mx-auto max-w-4xl h-full">
+            <TranscriptDisplay 
+              messages={messages} 
               variant={chatType}
-              isTyping
+              className="h-[300px]"
             />
-          )}
+          </div>
+        </div>
 
-          <div ref={messagesEndRef} />
+        {/* Voice interface */}
+        <div className="sticky bottom-0 border-t bg-card/90 backdrop-blur-xl p-6">
+          <div className="mx-auto max-w-4xl">
+            <VoiceInterface
+              agentId={agentId}
+              variant={chatType}
+              onSpeakingChange={handleSpeakingChange}
+              onTranscriptUpdate={handleTranscriptUpdate}
+              onInterviewEnd={handleInterviewEnd}
+              disabled={interviewEnded}
+            />
+          </div>
         </div>
       </main>
-
-      {/* Input */}
-      <div className="sticky bottom-0 border-t bg-card/80 p-4 backdrop-blur-xl">
-        <div className="mx-auto max-w-2xl">
-          <ChatInput
-            onSend={handleSendMessage}
-            disabled={isTyping || isComplete}
-            placeholder={isComplete ? "Interview complete!" : "Type your answer..."}
-          />
-        </div>
-      </div>
     </div>
   );
 };
