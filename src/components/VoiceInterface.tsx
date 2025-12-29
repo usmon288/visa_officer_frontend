@@ -69,6 +69,28 @@ export function VoiceInterface({
     visa: 'from-visa to-visa-dark',
   };
 
+  // Browser TTS fallback
+  const speakWithBrowserTTS = useCallback((text: string): Promise<void> => {
+    return new Promise((resolve) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.lang = 'en-US';
+      
+      utterance.onstart = () => onSpeakingChange(true);
+      utterance.onend = () => {
+        onSpeakingChange(false);
+        resolve();
+      };
+      utterance.onerror = () => {
+        onSpeakingChange(false);
+        resolve();
+      };
+      
+      speechSynthesis.speak(utterance);
+    });
+  }, [onSpeakingChange]);
+
   // Play audio from base64
   const playAudio = useCallback(async (base64Audio: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -87,7 +109,7 @@ export function VoiceInterface({
         };
         
         onSpeakingChange(true);
-        audio.play();
+        audio.play().catch(reject);
       } catch (error) {
         reject(error);
       }
@@ -119,30 +141,35 @@ export function VoiceInterface({
       messagesRef.current.push({ role: 'assistant', content: aiResponse });
       onTranscriptUpdate('', aiResponse);
 
-      // Convert to speech
-      const ttsResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: aiResponse, interviewType: variant }),
+      // Try ElevenLabs TTS first, fallback to browser TTS
+      try {
+        const ttsResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ text: aiResponse, interviewType: variant }),
+          }
+        );
+
+        if (!ttsResponse.ok) {
+          throw new Error('ElevenLabs TTS failed');
         }
-      );
 
-      if (!ttsResponse.ok) {
-        console.error('TTS failed, continuing without audio');
-        setIsProcessing(false);
-        return;
-      }
-
-      const ttsData = await ttsResponse.json();
-      
-      if (ttsData.audioContent) {
-        await playAudio(ttsData.audioContent);
+        const ttsData = await ttsResponse.json();
+        
+        if (ttsData.audioContent) {
+          await playAudio(ttsData.audioContent);
+        } else {
+          throw new Error('No audio content');
+        }
+      } catch (ttsError) {
+        console.log('ElevenLabs TTS unavailable, using browser TTS');
+        await speakWithBrowserTTS(aiResponse);
       }
     } catch (error) {
       console.error('AI response error:', error);
@@ -154,7 +181,7 @@ export function VoiceInterface({
     } finally {
       setIsProcessing(false);
     }
-  }, [variant, onTranscriptUpdate, playAudio, toast]);
+  }, [variant, onTranscriptUpdate, playAudio, speakWithBrowserTTS, toast]);
 
   // Start listening for user speech
   const startListening = useCallback(() => {
