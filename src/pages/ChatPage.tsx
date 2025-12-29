@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageSquare, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AnimatedCharacter } from "@/components/AnimatedCharacter";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
 import { VoiceInterface } from "@/components/VoiceInterface";
 import { AGENT_IDS, InterviewType } from "@/lib/elevenlabs-agents";
@@ -15,36 +15,109 @@ interface Message {
   timestamp: Date;
 }
 
-const pageConfig = {
+type AvatarVariant = "ielts" | "job" | "visa-work" | "visa-student" | "visa-worktravel" | "visa-travel";
+type TranscriptVariant = "ielts" | "job" | "visa";
+type VoiceVariant = "ielts" | "job" | "visa";
+
+const pageConfig: Record<string, {
+  title: string;
+  subtitle: string;
+  gradient: string;
+  tips: string[];
+  avatarVariant: AvatarVariant;
+  transcriptVariant: TranscriptVariant;
+  voiceVariant: VoiceVariant;
+}> = {
   ielts: {
     title: "IELTS Speaking Test",
-    subtitle: "Practice with our AI examiner",
+    subtitle: "Practice with Dr. Emma Richardson",
     gradient: "from-ielts/20 to-ielts/5",
     tips: [
       "Speak clearly and at a natural pace",
       "Provide detailed answers with examples",
       "Don't worry about minor mistakes",
     ],
+    avatarVariant: "ielts",
+    transcriptVariant: "ielts",
+    voiceVariant: "ielts",
   },
   job: {
     title: "Job Interview",
-    subtitle: "Practice with our AI HR manager",
+    subtitle: "Practice with Michael Chen, HR Director",
     gradient: "from-job/20 to-job/5",
     tips: [
       "Be confident and professional",
       "Share specific examples from your experience",
       "Show enthusiasm for the role",
     ],
+    avatarVariant: "job",
+    transcriptVariant: "job",
+    voiceVariant: "job",
+  },
+  "visa-work": {
+    title: "Work Visa Interview",
+    subtitle: "Practice with Officer James Mitchell",
+    gradient: "from-visa/20 to-visa/5",
+    tips: [
+      "Know your job details and salary",
+      "Explain your specialized skills",
+      "Show intent to return home after work",
+    ],
+    avatarVariant: "visa-work",
+    transcriptVariant: "visa",
+    voiceVariant: "visa",
+  },
+  "visa-student": {
+    title: "Student Visa Interview",
+    subtitle: "Practice with Officer Sarah Williams",
+    gradient: "from-visa/20 to-visa/5",
+    tips: [
+      "Know your university and program details",
+      "Be clear about funding sources",
+      "Show strong ties to your home country",
+    ],
+    avatarVariant: "visa-student",
+    transcriptVariant: "visa",
+    voiceVariant: "visa",
+  },
+  "visa-worktravel": {
+    title: "Work & Travel Visa Interview",
+    subtitle: "Practice with Officer David Rodriguez",
+    gradient: "from-visa/20 to-visa/5",
+    tips: [
+      "Know your program and employer details",
+      "Show you're a current student",
+      "Explain your return plans after summer",
+    ],
+    avatarVariant: "visa-worktravel",
+    transcriptVariant: "visa",
+    voiceVariant: "visa",
+  },
+  "visa-travel": {
+    title: "Tourist Visa Interview",
+    subtitle: "Practice with Officer Lisa Anderson",
+    gradient: "from-visa/20 to-visa/5",
+    tips: [
+      "Know your travel itinerary",
+      "Show proof of financial support",
+      "Demonstrate strong ties to home",
+    ],
+    avatarVariant: "visa-travel",
+    transcriptVariant: "visa",
+    voiceVariant: "visa",
   },
   visa: {
     title: "Visa Interview",
-    subtitle: "Practice with our AI visa officer",
+    subtitle: "Practice with a Visa Officer",
     gradient: "from-visa/20 to-visa/5",
     tips: [
       "Be honest and consistent in your answers",
       "Explain your travel purpose clearly",
       "Demonstrate ties to your home country",
     ],
+    avatarVariant: "visa-work",
+    transcriptVariant: "visa",
+    voiceVariant: "visa",
   },
 };
 
@@ -52,7 +125,7 @@ const ChatPage = () => {
   const { type } = useParams<{ type: string }>();
   const navigate = useNavigate();
   const chatType = (type as InterviewType) || "ielts";
-  const config = pageConfig[chatType];
+  const config = pageConfig[chatType] || pageConfig.ielts;
   const agentId = AGENT_IDS[chatType];
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -144,8 +217,8 @@ const ChatPage = () => {
           config.gradient
         )}>
           <div className="mx-auto max-w-4xl px-4">
-            <AnimatedCharacter 
-              variant={chatType} 
+            <ProfessionalAvatar 
+              variant={config.avatarVariant} 
               isSpeaking={isSpeaking}
               isListening={isListening}
               className="mx-auto"
@@ -182,7 +255,7 @@ const ChatPage = () => {
           <div className="mx-auto max-w-4xl h-full">
             <TranscriptDisplay 
               messages={messages} 
-              variant={chatType}
+              variant={config.transcriptVariant}
               className="h-[300px]"
             />
           </div>
@@ -193,7 +266,7 @@ const ChatPage = () => {
           <div className="mx-auto max-w-4xl">
             <VoiceInterface
               agentId={agentId}
-              variant={chatType}
+              variant={config.voiceVariant}
               onSpeakingChange={handleSpeakingChange}
               onTranscriptUpdate={handleTranscriptUpdate}
               onInterviewEnd={handleInterviewEnd}
