@@ -1,9 +1,36 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Mic, MicOff, Phone, PhoneOff, Volume2, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Phone, PhoneOff, Volume2, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { DemoInterviewer, DemoInterviewType } from '@/lib/demo-interview';
+
+// Web Speech API types
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface ISpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => ISpeechRecognition;
+    webkitSpeechRecognition: new () => ISpeechRecognition;
+  }
+}
 
 interface VoiceInterfaceProps {
   agentId: string;
@@ -14,7 +41,6 @@ interface VoiceInterfaceProps {
   disabled?: boolean;
 }
 
-// Use the ElevenLabs React SDK approach with direct WebRTC
 export function VoiceInterface({
   agentId,
   variant,
@@ -28,11 +54,15 @@ export function VoiceInterface({
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [status, setStatus] = useState<string>('disconnected');
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const demoInterviewerRef = useRef<DemoInterviewer | null>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
   const variantColors = {
     ielts: 'from-ielts to-ielts-dark',
@@ -40,14 +70,92 @@ export function VoiceInterface({
     visa: 'from-visa to-visa-dark',
   };
 
-  const startConversation = useCallback(async () => {
-    if (disabled || isConnecting || isConnected) return;
-    
+  // Demo mode - simulated interview
+  const startDemoMode = useCallback(async () => {
+    setIsConnecting(true);
+    setStatus('connecting');
+
+    try {
+      // Initialize speech recognition for demo mode
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (SpeechRecognitionAPI) {
+        const recognition = new SpeechRecognitionAPI();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[event.results.length - 1][0].transcript;
+          onTranscriptUpdate(transcript, '');
+          
+          // Let demo interviewer respond
+          if (demoInterviewerRef.current) {
+            demoInterviewerRef.current.handleUserInput(transcript);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+          if (event.error !== 'no-speech') {
+            toast({
+              variant: "destructive",
+              title: "Microphone Error",
+              description: "Could not recognize speech. Please try again.",
+            });
+          }
+        };
+
+        recognitionRef.current = recognition;
+      }
+
+      // Create demo interviewer
+      demoInterviewerRef.current = new DemoInterviewer(
+        variant as DemoInterviewType,
+        (text) => onTranscriptUpdate('', text),
+        onSpeakingChange
+      );
+
+      // Start demo
+      setTimeout(() => {
+        setIsConnected(true);
+        setIsConnecting(false);
+        setIsDemoMode(true);
+        setStatus('connected');
+        
+        toast({
+          title: "Demo Mode Active",
+          description: "This is a simulated interview for demonstration purposes.",
+        });
+
+        // Start the interview
+        demoInterviewerRef.current?.start();
+        
+        // Start listening
+        if (recognitionRef.current) {
+          recognitionRef.current.start();
+          setIsRecording(true);
+        }
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error starting demo mode:', error);
+      setIsConnecting(false);
+      setStatus('error');
+      toast({
+        variant: "destructive",
+        title: "Demo Error",
+        description: "Failed to start demo mode.",
+      });
+    }
+  }, [variant, toast, onSpeakingChange, onTranscriptUpdate]);
+
+  // Real ElevenLabs connection
+  const startRealConversation = useCallback(async () => {
     setIsConnecting(true);
     setStatus('requesting_microphone');
 
     try {
-      // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -58,7 +166,6 @@ export function VoiceInterface({
       localStreamRef.current = stream;
       setStatus('getting_token');
 
-      // Get conversation token from edge function
       const { data, error } = await supabase.functions.invoke('elevenlabs-conversation-token', {
         body: { agentId }
       });
@@ -69,42 +176,35 @@ export function VoiceInterface({
 
       setStatus('connecting');
 
-      // Create peer connection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
 
-      // Set up remote audio
       const audioEl = new Audio();
       audioEl.autoplay = true;
       audioRef.current = audioEl;
 
       pc.ontrack = (e) => {
         audioEl.srcObject = e.streams[0];
-        console.log('Remote audio track received');
       };
 
-      // Add local audio track
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream);
       });
 
-      // Set up data channel for events
       const dc = pc.createDataChannel('oai-events');
       dcRef.current = dc;
 
       dc.onopen = () => {
-        console.log('Data channel opened');
         setIsConnected(true);
         setIsConnecting(false);
         setStatus('connected');
         toast({
           title: "Connected!",
-          description: "You can start speaking now. The AI examiner will respond.",
+          description: "You can start speaking now.",
         });
       };
 
       dc.onclose = () => {
-        console.log('Data channel closed');
         setIsConnected(false);
         setStatus('disconnected');
       };
@@ -112,23 +212,16 @@ export function VoiceInterface({
       dc.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data);
-          console.log('Received event:', event.type);
           
           if (event.type === 'agent_response') {
             onSpeakingChange(true);
             if (event.agent_response_event?.agent_response) {
               onTranscriptUpdate('', event.agent_response_event.agent_response);
             }
-          } else if (event.type === 'agent_response_correction') {
-            if (event.agent_response_correction_event?.corrected_agent_response) {
-              onTranscriptUpdate('', event.agent_response_correction_event.corrected_agent_response);
-            }
           } else if (event.type === 'user_transcript') {
             if (event.user_transcription_event?.user_transcript) {
               onTranscriptUpdate(event.user_transcription_event.user_transcript, '');
             }
-          } else if (event.type === 'audio' || event.type === 'response.audio.delta') {
-            onSpeakingChange(true);
           } else if (event.type === 'audio_done' || event.type === 'response.audio.done') {
             onSpeakingChange(false);
           }
@@ -137,11 +230,9 @@ export function VoiceInterface({
         }
       };
 
-      // Create and set local description
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // Connect to ElevenLabs Realtime API
       const baseUrl = 'https://api.elevenlabs.io/v1/convai/conversation';
       const response = await fetch(`${baseUrl}?agent_id=${agentId}`, {
         method: 'POST',
@@ -162,7 +253,6 @@ export function VoiceInterface({
       };
 
       await pc.setRemoteDescription(answer);
-      console.log('WebRTC connection established');
 
     } catch (error) {
       console.error('Error starting conversation:', error);
@@ -170,20 +260,32 @@ export function VoiceInterface({
       setIsConnected(false);
       setStatus('error');
       
+      // Fall back to demo mode
       toast({
-        variant: "destructive",
-        title: "Connection Failed",
-        description: error instanceof Error ? error.message : 'Failed to start voice conversation',
+        title: "Switching to Demo Mode",
+        description: "Live AI unavailable. Starting simulated interview instead.",
       });
       
-      // Cleanup on error
       localStreamRef.current?.getTracks().forEach(track => track.stop());
+      startDemoMode();
     }
-  }, [agentId, disabled, isConnecting, isConnected, toast, onSpeakingChange, onTranscriptUpdate]);
+  }, [agentId, toast, onSpeakingChange, onTranscriptUpdate, startDemoMode]);
+
+  const startConversation = useCallback(async () => {
+    if (disabled || isConnecting || isConnected) return;
+    
+    // Try real connection first, will fall back to demo if it fails
+    await startRealConversation();
+  }, [disabled, isConnecting, isConnected, startRealConversation]);
 
   const endConversation = useCallback(() => {
-    console.log('Ending conversation...');
+    // Stop speech recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
     
+    // Clean up WebRTC
     dcRef.current?.close();
     pcRef.current?.close();
     localStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -196,9 +298,12 @@ export function VoiceInterface({
     pcRef.current = null;
     localStreamRef.current = null;
     audioRef.current = null;
+    demoInterviewerRef.current = null;
     
     setIsConnected(false);
     setIsConnecting(false);
+    setIsDemoMode(false);
+    setIsRecording(false);
     setStatus('disconnected');
     onSpeakingChange(false);
     onInterviewEnd();
@@ -210,18 +315,28 @@ export function VoiceInterface({
   }, [toast, onSpeakingChange, onInterviewEnd]);
 
   const toggleMute = useCallback(() => {
-    if (localStreamRef.current) {
+    if (isDemoMode) {
+      if (isRecording && recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsRecording(false);
+        setIsMuted(true);
+      } else if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsRecording(true);
+        setIsMuted(false);
+      }
+    } else if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
       }
     }
-  }, []);
+  }, [isDemoMode, isRecording]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      recognitionRef.current?.stop();
       dcRef.current?.close();
       pcRef.current?.close();
       localStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -237,7 +352,7 @@ export function VoiceInterface({
       case 'connecting':
         return 'Connecting to AI interviewer...';
       case 'connected':
-        return isConnected ? 'Connected - Speak now!' : 'Connected';
+        return isDemoMode ? 'Demo Mode - Speak now!' : 'Connected - Speak now!';
       case 'error':
         return 'Connection failed';
       default:
@@ -247,6 +362,14 @@ export function VoiceInterface({
 
   return (
     <div className="flex flex-col items-center gap-4">
+      {/* Demo mode indicator */}
+      {isDemoMode && isConnected && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-600 text-xs font-medium">
+          <AlertCircle className="h-3 w-3" />
+          Demo Mode - Simulated Interview
+        </div>
+      )}
+
       {/* Status indicator */}
       <div className={cn(
         "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
@@ -318,7 +441,7 @@ export function VoiceInterface({
       {/* Instructions */}
       {!isConnected && !isConnecting && (
         <p className="text-sm text-muted-foreground text-center max-w-xs">
-          Click to start your live interview. The AI will ask you questions and evaluate your responses.
+          Click to start your interview practice. Speak clearly and the AI will respond.
         </p>
       )}
     </div>
