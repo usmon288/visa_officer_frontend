@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { AudioWaveformLarge } from "./AudioWaveform";
 
 interface AnimatedCharacterProps {
   variant: "ielts" | "job" | "visa";
@@ -196,11 +197,23 @@ export function AnimatedCharacter({
       <div className="mt-4 text-center">
         <h3 className="text-lg font-bold text-foreground">{character.name}</h3>
         <p className="text-sm text-muted-foreground">{character.role}</p>
+      </div>
+
+      {/* Audio waveform visualization */}
+      <div className="mt-4">
+        <AudioWaveformLarge 
+          isActive={isSpeaking} 
+          variant={variant}
+        />
+      </div>
+
+      {/* Status text */}
+      <div className="mt-2 h-5">
         {isSpeaking && (
-          <p className="text-xs text-accent mt-1 animate-pulse">Speaking...</p>
+          <p className="text-sm text-accent font-medium animate-pulse">Speaking...</p>
         )}
         {isListening && !isSpeaking && (
-          <p className="text-xs text-success mt-1 animate-pulse">Listening...</p>
+          <p className="text-sm text-success font-medium animate-pulse">Listening to you...</p>
         )}
       </div>
     </div>
