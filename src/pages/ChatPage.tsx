@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageSquare, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { RealisticHumanAI } from "@/components/RealisticHumanAI";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
 import { VoiceInterface } from "@/components/VoiceInterface";
 import { AGENT_IDS, InterviewType } from "@/lib/elevenlabs-agents";
@@ -213,11 +213,11 @@ const ChatPage = () => {
       <main className="flex flex-1 flex-col">
         {/* Character section */}
         <div className={cn(
-          "border-b py-8 bg-gradient-to-b",
+          "border-b py-12 md:py-16 bg-gradient-to-b",
           config.gradient
         )}>
           <div className="mx-auto max-w-4xl px-4">
-            <ProfessionalAvatar 
+            <RealisticHumanAI 
               variant={config.avatarVariant} 
               isSpeaking={isSpeaking}
               isListening={isListening}
