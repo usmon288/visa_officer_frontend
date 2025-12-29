@@ -74,7 +74,7 @@ const Index = () => {
             description="Simulate visa officer interviews. Practice for approval success."
             icon={<Plane className="h-7 w-7 text-primary-foreground" />}
             variant="visa"
-            onClick={() => navigate("/chat/visa")}
+            onClick={() => navigate("/visa")}
             delay={600}
           />
         </div>
