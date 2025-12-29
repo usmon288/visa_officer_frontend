@@ -36,3 +36,9 @@ verify_jwt = false
 
 [functions.analyze-interview]
 verify_jwt = false
+
+[functions.interview-chat]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false

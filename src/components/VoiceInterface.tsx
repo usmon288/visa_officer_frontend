@@ -1,10 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Mic, MicOff, Phone, PhoneOff, Volume2, Loader2, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Phone, PhoneOff, Volume2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { DemoInterviewer, DemoInterviewType } from '@/lib/demo-interview';
+
+interface VoiceInterfaceProps {
+  agentId: string;
+  variant: 'ielts' | 'job' | 'visa';
+  onSpeakingChange: (speaking: boolean) => void;
+  onTranscriptUpdate: (userText: string, aiText: string) => void;
+  onInterviewEnd: () => void;
+  disabled?: boolean;
+}
 
 // Web Speech API types
 interface SpeechRecognitionEvent extends Event {
@@ -21,6 +29,7 @@ interface ISpeechRecognition extends EventTarget {
   lang: string;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
   start(): void;
   stop(): void;
 }
@@ -32,14 +41,7 @@ declare global {
   }
 }
 
-interface VoiceInterfaceProps {
-  agentId: string;
-  variant: 'ielts' | 'job' | 'visa';
-  onSpeakingChange: (speaking: boolean) => void;
-  onTranscriptUpdate: (userText: string, aiText: string) => void;
-  onInterviewEnd: () => void;
-  disabled?: boolean;
-}
+type Message = { role: 'user' | 'assistant'; content: string };
 
 export function VoiceInterface({
   agentId,
@@ -54,15 +56,12 @@ export function VoiceInterface({
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [status, setStatus] = useState<string>('disconnected');
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const demoInterviewerRef = useRef<DemoInterviewer | null>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isListeningRef = useRef(false);
 
   const variantColors = {
     ielts: 'from-ielts to-ielts-dark',
@@ -70,241 +69,199 @@ export function VoiceInterface({
     visa: 'from-visa to-visa-dark',
   };
 
-  // Demo mode - simulated interview
-  const startDemoMode = useCallback(async () => {
-    setIsConnecting(true);
-    setStatus('connecting');
+  // Play audio from base64
+  const playAudio = useCallback(async (base64Audio: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const audio = new Audio(`data:audio/mpeg;base64,${base64Audio}`);
+        audioRef.current = audio;
+        
+        audio.onended = () => {
+          onSpeakingChange(false);
+          resolve();
+        };
+        
+        audio.onerror = () => {
+          onSpeakingChange(false);
+          reject(new Error('Audio playback failed'));
+        };
+        
+        onSpeakingChange(true);
+        audio.play();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }, [onSpeakingChange]);
+
+  // Get AI response and speak it
+  const getAIResponse = useCallback(async (userMessage: string) => {
+    setIsProcessing(true);
+    
+    // Add user message to history
+    messagesRef.current.push({ role: 'user', content: userMessage });
+    onTranscriptUpdate(userMessage, '');
 
     try {
-      // Initialize speech recognition for demo mode
-      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-      
-      if (SpeechRecognitionAPI) {
-        const recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
+      // Get AI response
+      const { data: chatData, error: chatError } = await supabase.functions.invoke('interview-chat', {
+        body: { 
+          messages: messagesRef.current,
+          interviewType: variant 
+        }
+      });
 
-        recognition.onresult = (event) => {
-          const transcript = event.results[event.results.length - 1][0].transcript;
-          onTranscriptUpdate(transcript, '');
-          
-          // Let demo interviewer respond
-          if (demoInterviewerRef.current) {
-            demoInterviewerRef.current.handleUserInput(transcript);
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          if (event.error !== 'no-speech') {
-            toast({
-              variant: "destructive",
-              title: "Microphone Error",
-              description: "Could not recognize speech. Please try again.",
-            });
-          }
-        };
-
-        recognitionRef.current = recognition;
+      if (chatError || !chatData?.response) {
+        throw new Error(chatError?.message || 'Failed to get AI response');
       }
 
-      // Create demo interviewer
-      demoInterviewerRef.current = new DemoInterviewer(
-        variant as DemoInterviewType,
-        (text) => onTranscriptUpdate('', text),
-        onSpeakingChange
+      const aiResponse = chatData.response;
+      messagesRef.current.push({ role: 'assistant', content: aiResponse });
+      onTranscriptUpdate('', aiResponse);
+
+      // Convert to speech
+      const ttsResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: aiResponse, interviewType: variant }),
+        }
       );
 
-      // Start demo
-      setTimeout(() => {
-        setIsConnected(true);
-        setIsConnecting(false);
-        setIsDemoMode(true);
-        setStatus('connected');
-        
-        toast({
-          title: "Demo Mode Active",
-          description: "This is a simulated interview for demonstration purposes.",
-        });
+      if (!ttsResponse.ok) {
+        console.error('TTS failed, continuing without audio');
+        setIsProcessing(false);
+        return;
+      }
 
-        // Start the interview
-        demoInterviewerRef.current?.start();
-        
-        // Start listening
-        if (recognitionRef.current) {
-          recognitionRef.current.start();
-          setIsRecording(true);
-        }
-      }, 1500);
-
+      const ttsData = await ttsResponse.json();
+      
+      if (ttsData.audioContent) {
+        await playAudio(ttsData.audioContent);
+      }
     } catch (error) {
-      console.error('Error starting demo mode:', error);
-      setIsConnecting(false);
-      setStatus('error');
+      console.error('AI response error:', error);
       toast({
         variant: "destructive",
-        title: "Demo Error",
-        description: "Failed to start demo mode.",
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to get response',
       });
+    } finally {
+      setIsProcessing(false);
     }
-  }, [variant, toast, onSpeakingChange, onTranscriptUpdate]);
+  }, [variant, onTranscriptUpdate, playAudio, toast]);
 
-  // Real ElevenLabs connection
-  const startRealConversation = useCallback(async () => {
-    setIsConnecting(true);
-    setStatus('requesting_microphone');
-
+  // Start listening for user speech
+  const startListening = useCallback(() => {
+    if (!recognitionRef.current || isListeningRef.current || isProcessing) return;
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        } 
-      });
-      localStreamRef.current = stream;
-      setStatus('getting_token');
-
-      const { data, error } = await supabase.functions.invoke('elevenlabs-conversation-token', {
-        body: { agentId }
-      });
-
-      if (error || !data?.token) {
-        throw new Error(error?.message || 'Failed to get conversation token');
-      }
-
-      setStatus('connecting');
-
-      const pc = new RTCPeerConnection();
-      pcRef.current = pc;
-
-      const audioEl = new Audio();
-      audioEl.autoplay = true;
-      audioRef.current = audioEl;
-
-      pc.ontrack = (e) => {
-        audioEl.srcObject = e.streams[0];
-      };
-
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream);
-      });
-
-      const dc = pc.createDataChannel('oai-events');
-      dcRef.current = dc;
-
-      dc.onopen = () => {
-        setIsConnected(true);
-        setIsConnecting(false);
-        setStatus('connected');
-        toast({
-          title: "Connected!",
-          description: "You can start speaking now.",
-        });
-      };
-
-      dc.onclose = () => {
-        setIsConnected(false);
-        setStatus('disconnected');
-      };
-
-      dc.onmessage = (e) => {
-        try {
-          const event = JSON.parse(e.data);
-          
-          if (event.type === 'agent_response') {
-            onSpeakingChange(true);
-            if (event.agent_response_event?.agent_response) {
-              onTranscriptUpdate('', event.agent_response_event.agent_response);
-            }
-          } else if (event.type === 'user_transcript') {
-            if (event.user_transcription_event?.user_transcript) {
-              onTranscriptUpdate(event.user_transcription_event.user_transcript, '');
-            }
-          } else if (event.type === 'audio_done' || event.type === 'response.audio.done') {
-            onSpeakingChange(false);
-          }
-        } catch (err) {
-          console.error('Error parsing event:', err);
-        }
-      };
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      const baseUrl = 'https://api.elevenlabs.io/v1/convai/conversation';
-      const response = await fetch(`${baseUrl}?agent_id=${agentId}`, {
-        method: 'POST',
-        body: offer.sdp,
-        headers: {
-          'Authorization': `Bearer ${data.token}`,
-          'Content-Type': 'application/sdp',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`WebRTC connection failed: ${response.status}`);
-      }
-
-      const answer: RTCSessionDescriptionInit = {
-        type: 'answer',
-        sdp: await response.text(),
-      };
-
-      await pc.setRemoteDescription(answer);
-
+      recognitionRef.current.start();
+      isListeningRef.current = true;
     } catch (error) {
-      console.error('Error starting conversation:', error);
-      setIsConnecting(false);
-      setIsConnected(false);
-      setStatus('error');
-      
-      // Fall back to demo mode
-      toast({
-        title: "Switching to Demo Mode",
-        description: "Live AI unavailable. Starting simulated interview instead.",
-      });
-      
-      localStreamRef.current?.getTracks().forEach(track => track.stop());
-      startDemoMode();
+      console.error('Failed to start recognition:', error);
     }
-  }, [agentId, toast, onSpeakingChange, onTranscriptUpdate, startDemoMode]);
+  }, [isProcessing]);
 
+  // Start the interview
   const startConversation = useCallback(async () => {
     if (disabled || isConnecting || isConnected) return;
     
-    // Start demo mode directly since ElevenLabs agents are not configured
-    // To use real agents, replace the agent IDs in src/lib/elevenlabs-agents.ts
-    await startDemoMode();
-  }, [disabled, isConnecting, isConnected, startDemoMode]);
+    setIsConnecting(true);
+    setStatus('connecting');
+    messagesRef.current = [];
 
+    try {
+      // Initialize speech recognition
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognitionAPI) {
+        throw new Error('Speech recognition not supported in this browser');
+      }
+
+      const recognition = new SpeechRecognitionAPI();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = async (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript;
+        isListeningRef.current = false;
+        
+        if (transcript.trim()) {
+          await getAIResponse(transcript);
+          // Resume listening after AI responds
+          setTimeout(() => startListening(), 500);
+        } else {
+          startListening();
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        isListeningRef.current = false;
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          setTimeout(() => startListening(), 1000);
+        }
+      };
+
+      recognition.onend = () => {
+        isListeningRef.current = false;
+        if (isConnected && !isProcessing) {
+          setTimeout(() => startListening(), 300);
+        }
+      };
+
+      recognitionRef.current = recognition;
+
+      setIsConnected(true);
+      setIsConnecting(false);
+      setStatus('connected');
+
+      toast({
+        title: "Interview Started",
+        description: "The interviewer will begin shortly. Speak clearly when it's your turn.",
+      });
+
+      // Get initial AI greeting
+      await getAIResponse("Hello, I'm ready to start the interview.");
+      
+      // Start listening for user
+      startListening();
+
+    } catch (error) {
+      console.error('Error starting interview:', error);
+      setIsConnecting(false);
+      setStatus('error');
+      
+      toast({
+        variant: "destructive",
+        title: "Failed to Start",
+        description: error instanceof Error ? error.message : 'Could not start interview',
+      });
+    }
+  }, [disabled, isConnecting, isConnected, isProcessing, toast, getAIResponse, startListening]);
+
+  // End the interview
   const endConversation = useCallback(() => {
-    // Stop speech recognition
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
     
-    // Clean up WebRTC
-    dcRef.current?.close();
-    pcRef.current?.close();
-    localStreamRef.current?.getTracks().forEach(track => track.stop());
-    
     if (audioRef.current) {
-      audioRef.current.srcObject = null;
+      audioRef.current.pause();
+      audioRef.current = null;
     }
     
-    dcRef.current = null;
-    pcRef.current = null;
-    localStreamRef.current = null;
-    audioRef.current = null;
-    demoInterviewerRef.current = null;
-    
+    isListeningRef.current = false;
     setIsConnected(false);
     setIsConnecting(false);
-    setIsDemoMode(false);
-    setIsRecording(false);
     setStatus('disconnected');
     onSpeakingChange(false);
     onInterviewEnd();
@@ -315,45 +272,39 @@ export function VoiceInterface({
     });
   }, [toast, onSpeakingChange, onInterviewEnd]);
 
+  // Toggle mute
   const toggleMute = useCallback(() => {
-    if (isDemoMode) {
-      if (isRecording && recognitionRef.current) {
+    if (isMuted) {
+      startListening();
+      setIsMuted(false);
+    } else {
+      if (recognitionRef.current && isListeningRef.current) {
         recognitionRef.current.stop();
-        setIsRecording(false);
-        setIsMuted(true);
-      } else if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsRecording(true);
-        setIsMuted(false);
+        isListeningRef.current = false;
       }
-    } else if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
-      }
+      setIsMuted(true);
     }
-  }, [isDemoMode, isRecording]);
+  }, [isMuted, startListening]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      recognitionRef.current?.stop();
-      dcRef.current?.close();
-      pcRef.current?.close();
-      localStreamRef.current?.getTracks().forEach(track => track.stop());
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
     };
   }, []);
 
   const getStatusText = () => {
+    if (isProcessing) return 'AI is responding...';
     switch (status) {
-      case 'requesting_microphone':
-        return 'Requesting microphone access...';
-      case 'getting_token':
-        return 'Preparing connection...';
       case 'connecting':
-        return 'Connecting to AI interviewer...';
+        return 'Starting interview...';
       case 'connected':
-        return isDemoMode ? 'Demo Mode - Speak now!' : 'Connected - Speak now!';
+        return isMuted ? 'Microphone muted' : 'Listening... Speak now!';
       case 'error':
         return 'Connection failed';
       default:
@@ -363,25 +314,19 @@ export function VoiceInterface({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Demo mode indicator */}
-      {isDemoMode && isConnected && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-600 text-xs font-medium">
-          <AlertCircle className="h-3 w-3" />
-          Demo Mode - Simulated Interview
-        </div>
-      )}
-
       {/* Status indicator */}
       <div className={cn(
         "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
         isConnected 
-          ? "bg-success/20 text-success" 
+          ? isProcessing 
+            ? "bg-accent/20 text-accent"
+            : "bg-success/20 text-success" 
           : isConnecting 
           ? "bg-accent/20 text-accent" 
           : "bg-muted text-muted-foreground"
       )}>
-        {isConnecting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isConnected && <Volume2 className="h-4 w-4 animate-pulse" />}
+        {(isConnecting || isProcessing) && <Loader2 className="h-4 w-4 animate-spin" />}
+        {isConnected && !isProcessing && <Volume2 className="h-4 w-4 animate-pulse" />}
         <span>{getStatusText()}</span>
       </div>
 
@@ -402,7 +347,7 @@ export function VoiceInterface({
             {isConnecting ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Connecting...
+                Starting...
               </>
             ) : (
               <>
@@ -418,6 +363,7 @@ export function VoiceInterface({
               variant="secondary"
               size="icon"
               className="h-14 w-14 rounded-full shadow-medium"
+              disabled={isProcessing}
             >
               {isMuted ? (
                 <MicOff className="h-6 w-6 text-destructive" />
@@ -442,7 +388,7 @@ export function VoiceInterface({
       {/* Instructions */}
       {!isConnected && !isConnecting && (
         <p className="text-sm text-muted-foreground text-center max-w-xs">
-          Click to start your interview practice. Speak clearly and the AI will respond.
+          Click to start your live AI interview with voice. The interviewer will speak and listen to your responses.
         </p>
       )}
     </div>
