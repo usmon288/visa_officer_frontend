@@ -274,9 +274,10 @@ export function VoiceInterface({
   const startConversation = useCallback(async () => {
     if (disabled || isConnecting || isConnected) return;
     
-    // Try real connection first, will fall back to demo if it fails
-    await startRealConversation();
-  }, [disabled, isConnecting, isConnected, startRealConversation]);
+    // Start demo mode directly since ElevenLabs agents are not configured
+    // To use real agents, replace the agent IDs in src/lib/elevenlabs-agents.ts
+    await startDemoMode();
+  }, [disabled, isConnecting, isConnected, startDemoMode]);
 
   const endConversation = useCallback(() => {
     // Stop speech recognition
