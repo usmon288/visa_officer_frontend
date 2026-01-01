@@ -4,8 +4,8 @@ import { ArrowLeft, MessageSquare, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoStyleAvatar } from "@/components/VideoStyleAvatar";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
-import { RealtimeVoiceInterface } from "@/components/RealtimeVoiceInterface";
-import { AGENT_IDS, InterviewType } from "@/lib/elevenlabs-agents";
+import { VoiceInterface } from "@/components/VoiceInterface";
+import { InterviewType } from "@/lib/elevenlabs-agents";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -126,7 +126,6 @@ const ChatPage = () => {
   const navigate = useNavigate();
   const chatType = (type as InterviewType) || "ielts";
   const config = pageConfig[chatType] || pageConfig.ielts;
-  const agentId = AGENT_IDS[chatType];
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -142,6 +141,7 @@ const ChatPage = () => {
         isUser: true,
         timestamp: new Date(),
       }]);
+      setIsListening(true);
     }
     if (aiText) {
       setMessages(prev => [...prev, {
@@ -150,6 +150,7 @@ const ChatPage = () => {
         isUser: false,
         timestamp: new Date(),
       }]);
+      setIsListening(false);
     }
   }, []);
 
@@ -157,15 +158,15 @@ const ChatPage = () => {
     setIsSpeaking(speaking);
     if (speaking) {
       setShowTips(false);
+      setIsListening(false);
+    } else {
+      setIsListening(true);
     }
-  }, []);
-
-  const handleListeningChange = useCallback((listening: boolean) => {
-    setIsListening(listening);
   }, []);
 
   const handleInterviewEnd = useCallback(() => {
     setInterviewEnded(true);
+    setIsListening(false);
     const transcript = messages.map(m => 
       `${m.isUser ? 'Candidate' : 'Interviewer'}: ${m.text}`
     ).join('\n\n');
@@ -257,11 +258,10 @@ const ChatPage = () => {
 
           {/* Voice interface */}
           <div className="border-t border-border/30 bg-card/80 backdrop-blur-xl p-6">
-            <RealtimeVoiceInterface
-              agentId={agentId}
+            <VoiceInterface
+              agentId=""
               variant={config.voiceVariant}
               onSpeakingChange={handleSpeakingChange}
-              onListeningChange={handleListeningChange}
               onTranscriptUpdate={handleTranscriptUpdate}
               onInterviewEnd={handleInterviewEnd}
               disabled={interviewEnded}
