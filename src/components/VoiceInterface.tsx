@@ -141,36 +141,9 @@ export function VoiceInterface({
       messagesRef.current.push({ role: 'assistant', content: aiResponse });
       onTranscriptUpdate('', aiResponse);
 
-      // Try ElevenLabs TTS first, fallback to browser TTS
-      try {
-        const ttsResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({ text: aiResponse, interviewType: variant }),
-          }
-        );
-
-        if (!ttsResponse.ok) {
-          throw new Error('ElevenLabs TTS failed');
-        }
-
-        const ttsData = await ttsResponse.json();
-        
-        if (ttsData.audioContent) {
-          await playAudio(ttsData.audioContent);
-        } else {
-          throw new Error('No audio content');
-        }
-      } catch (ttsError) {
-        console.log('ElevenLabs TTS unavailable, using browser TTS');
-        await speakWithBrowserTTS(aiResponse);
-      }
+      // Use browser TTS directly (ElevenLabs free tier is blocked)
+      await speakWithBrowserTTS(aiResponse);
+      
     } catch (error) {
       console.error('AI response error:', error);
       toast({
@@ -181,7 +154,7 @@ export function VoiceInterface({
     } finally {
       setIsProcessing(false);
     }
-  }, [variant, onTranscriptUpdate, playAudio, speakWithBrowserTTS, toast]);
+  }, [variant, onTranscriptUpdate, speakWithBrowserTTS, toast]);
 
   // Start listening for user speech
   const startListening = useCallback(() => {
