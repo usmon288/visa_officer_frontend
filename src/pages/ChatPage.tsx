@@ -2,9 +2,9 @@ import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageSquare, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RealisticHumanAI } from "@/components/RealisticHumanAI";
+import { VideoStyleAvatar } from "@/components/VideoStyleAvatar";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
-import { VoiceInterface } from "@/components/VoiceInterface";
+import { RealtimeVoiceInterface } from "@/components/RealtimeVoiceInterface";
 import { AGENT_IDS, InterviewType } from "@/lib/elevenlabs-agents";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +30,8 @@ const pageConfig: Record<string, {
 }> = {
   ielts: {
     title: "IELTS Speaking Test",
-    subtitle: "Practice with Dr. Emma Richardson",
-    gradient: "from-ielts/20 to-ielts/5",
+    subtitle: "Live Session with Dr. Emma Richardson",
+    gradient: "from-slate-900/50 to-background",
     tips: [
       "Speak clearly and at a natural pace",
       "Provide detailed answers with examples",
@@ -43,8 +43,8 @@ const pageConfig: Record<string, {
   },
   job: {
     title: "Job Interview",
-    subtitle: "Practice with Michael Chen, HR Director",
-    gradient: "from-job/20 to-job/5",
+    subtitle: "Live Session with Michael Chen",
+    gradient: "from-zinc-900/50 to-background",
     tips: [
       "Be confident and professional",
       "Share specific examples from your experience",
@@ -56,8 +56,8 @@ const pageConfig: Record<string, {
   },
   "visa-work": {
     title: "Work Visa Interview",
-    subtitle: "Practice with Officer James Mitchell",
-    gradient: "from-visa/20 to-visa/5",
+    subtitle: "Live Session with Officer Mitchell",
+    gradient: "from-blue-950/30 to-background",
     tips: [
       "Know your job details and salary",
       "Explain your specialized skills",
@@ -69,8 +69,8 @@ const pageConfig: Record<string, {
   },
   "visa-student": {
     title: "Student Visa Interview",
-    subtitle: "Practice with Officer Sarah Williams",
-    gradient: "from-visa/20 to-visa/5",
+    subtitle: "Live Session with Officer Williams",
+    gradient: "from-indigo-950/30 to-background",
     tips: [
       "Know your university and program details",
       "Be clear about funding sources",
@@ -81,9 +81,9 @@ const pageConfig: Record<string, {
     voiceVariant: "visa",
   },
   "visa-worktravel": {
-    title: "Work & Travel Visa Interview",
-    subtitle: "Practice with Officer David Rodriguez",
-    gradient: "from-visa/20 to-visa/5",
+    title: "Work & Travel Interview",
+    subtitle: "Live Session with Officer Rodriguez",
+    gradient: "from-emerald-950/30 to-background",
     tips: [
       "Know your program and employer details",
       "Show you're a current student",
@@ -95,8 +95,8 @@ const pageConfig: Record<string, {
   },
   "visa-travel": {
     title: "Tourist Visa Interview",
-    subtitle: "Practice with Officer Lisa Anderson",
-    gradient: "from-visa/20 to-visa/5",
+    subtitle: "Live Session with Officer Anderson",
+    gradient: "from-amber-950/30 to-background",
     tips: [
       "Know your travel itinerary",
       "Show proof of financial support",
@@ -108,8 +108,8 @@ const pageConfig: Record<string, {
   },
   visa: {
     title: "Visa Interview",
-    subtitle: "Practice with a Visa Officer",
-    gradient: "from-visa/20 to-visa/5",
+    subtitle: "Live Session with a Visa Officer",
+    gradient: "from-slate-900/50 to-background",
     tips: [
       "Be honest and consistent in your answers",
       "Explain your travel purpose clearly",
@@ -142,7 +142,6 @@ const ChatPage = () => {
         isUser: true,
         timestamp: new Date(),
       }]);
-      setIsListening(true);
     }
     if (aiText) {
       setMessages(prev => [...prev, {
@@ -151,7 +150,6 @@ const ChatPage = () => {
         isUser: false,
         timestamp: new Date(),
       }]);
-      setIsListening(false);
     }
   }, []);
 
@@ -159,18 +157,19 @@ const ChatPage = () => {
     setIsSpeaking(speaking);
     if (speaking) {
       setShowTips(false);
-      setIsListening(false);
     }
+  }, []);
+
+  const handleListeningChange = useCallback((listening: boolean) => {
+    setIsListening(listening);
   }, []);
 
   const handleInterviewEnd = useCallback(() => {
     setInterviewEnded(true);
-    // Build transcript from messages
     const transcript = messages.map(m => 
       `${m.isUser ? 'Candidate' : 'Interviewer'}: ${m.text}`
     ).join('\n\n');
     
-    // Navigate to result with transcript
     setTimeout(() => {
       navigate(`/result/${chatType}`, { 
         state: { transcript, messages } 
@@ -179,67 +178,65 @@ const ChatPage = () => {
   }, [messages, chatType, navigate]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-muted/30">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-card/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+    <div className={cn(
+      "flex min-h-screen flex-col bg-gradient-to-b",
+      config.gradient
+    )}>
+      {/* Minimal header */}
+      <header className="absolute top-0 left-0 right-0 z-10 p-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/")}
-            className="gap-2"
+            className="gap-2 text-white/70 hover:text-white hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Exit
           </Button>
 
           <div className="text-center">
-            <h1 className="font-bold text-foreground">{config.title}</h1>
-            <p className="text-xs text-muted-foreground">{config.subtitle}</p>
+            <h1 className="font-semibold text-white/90">{config.title}</h1>
+            <p className="text-xs text-white/50">{config.subtitle}</p>
           </div>
 
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowTips(!showTips)}
-            className="h-9 w-9"
+            className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10"
           >
             <Info className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex flex-1 flex-col">
-        {/* Character section */}
-        <div className={cn(
-          "border-b py-12 md:py-16 bg-gradient-to-b",
-          config.gradient
-        )}>
-          <div className="mx-auto max-w-4xl px-4">
-            <RealisticHumanAI 
-              variant={config.avatarVariant} 
-              isSpeaking={isSpeaking}
-              isListening={isListening}
-              className="mx-auto"
-            />
-          </div>
+      {/* Main content - video call layout */}
+      <main className="flex flex-1 flex-col lg:flex-row">
+        {/* Left side - Avatar (main focus) */}
+        <div className="flex-1 flex items-center justify-center p-8 pt-20">
+          <VideoStyleAvatar 
+            variant={config.avatarVariant} 
+            isSpeaking={isSpeaking}
+            isListening={isListening}
+          />
         </div>
 
-        {/* Tips panel */}
-        {showTips && messages.length === 0 && (
-          <div className="border-b bg-muted/30 py-4 animate-fade-in">
-            <div className="mx-auto max-w-4xl px-4">
+        {/* Right side - Transcript and controls */}
+        <div className="lg:w-96 flex flex-col bg-card/50 backdrop-blur-sm border-l border-border/30">
+          {/* Tips panel */}
+          {showTips && messages.length === 0 && (
+            <div className="p-4 border-b border-border/30 animate-fade-in">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/20">
                   <MessageSquare className="h-4 w-4 text-accent" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground mb-2">Tips for success:</h3>
+                  <h3 className="font-semibold text-foreground mb-2 text-sm">Tips:</h3>
                   <ul className="space-y-1">
                     {config.tips.map((tip, i) => (
-                      <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                      <li key={i} className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span className="h-1 w-1 rounded-full bg-accent" />
                         {tip}
                       </li>
                     ))}
@@ -247,27 +244,24 @@ const ChatPage = () => {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Transcript section */}
-        <div className="flex-1 overflow-hidden">
-          <div className="mx-auto max-w-4xl h-full">
+          {/* Transcript section */}
+          <div className="flex-1 overflow-hidden">
             <TranscriptDisplay 
               messages={messages} 
               variant={config.transcriptVariant}
-              className="h-[300px]"
+              className="h-full"
             />
           </div>
-        </div>
 
-        {/* Voice interface */}
-        <div className="sticky bottom-0 border-t bg-card/90 backdrop-blur-xl p-6">
-          <div className="mx-auto max-w-4xl">
-            <VoiceInterface
+          {/* Voice interface */}
+          <div className="border-t border-border/30 bg-card/80 backdrop-blur-xl p-6">
+            <RealtimeVoiceInterface
               agentId={agentId}
               variant={config.voiceVariant}
               onSpeakingChange={handleSpeakingChange}
+              onListeningChange={handleListeningChange}
               onTranscriptUpdate={handleTranscriptUpdate}
               onInterviewEnd={handleInterviewEnd}
               disabled={interviewEnded}
