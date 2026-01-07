@@ -1,12 +1,25 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Info } from "lucide-react";
+import { ArrowLeft, MessageSquare, Info, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoStyleAvatar } from "@/components/VideoStyleAvatar";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
-import { VoiceInterface } from "@/components/VoiceInterface";
+import { RealtimeVoiceInterface } from "@/components/RealtimeVoiceInterface";
 import { InterviewType } from "@/lib/elevenlabs-agents";
+import { getAgentId } from "@/lib/elevenlabs-agents";
+import { subscriptionsAPI } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Message {
   id: string;
@@ -132,6 +145,10 @@ const ChatPage = () => {
   const [isListening, setIsListening] = useState(false);
   const [showTips, setShowTips] = useState(true);
   const [interviewEnded, setInterviewEnded] = useState(false);
+  const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [usageCheck, setUsageCheck] = useState<{ canStart: boolean; message: string } | null>(null);
+  const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const { toast } = useToast();
 
   const handleTranscriptUpdate = useCallback((userText: string, aiText: string) => {
     if (userText) {
@@ -164,6 +181,28 @@ const ChatPage = () => {
     }
   }, []);
 
+  // Check usage limits on mount
+  useEffect(() => {
+    const checkUsage = async () => {
+      try {
+        const usage = await subscriptionsAPI.getUsage();
+        setUsageCheck({
+          canStart: usage.can_start_interview,
+          message: usage.remaining === 'unlimited' 
+            ? 'Unlimited interviews available'
+            : `${usage.remaining} interview(s) remaining this month`,
+        });
+        
+        if (!usage.can_start_interview) {
+          setShowLimitDialog(true);
+        }
+      } catch (error) {
+        console.error('Failed to check usage:', error);
+      }
+    };
+    checkUsage();
+  }, []);
+
   const handleInterviewEnd = useCallback(() => {
     setInterviewEnded(true);
     setIsListening(false);
@@ -173,10 +212,10 @@ const ChatPage = () => {
     
     setTimeout(() => {
       navigate(`/result/${chatType}`, { 
-        state: { transcript, messages } 
+        state: { transcript, messages, interviewId } 
       });
     }, 1500);
-  }, [messages, chatType, navigate]);
+  }, [messages, chatType, navigate, interviewId]);
 
   return (
     <div className={cn(
@@ -258,17 +297,55 @@ const ChatPage = () => {
 
           {/* Voice interface */}
           <div className="border-t border-border/30 bg-card/80 backdrop-blur-xl p-6">
-            <VoiceInterface
-              agentId=""
-              variant={config.voiceVariant}
-              onSpeakingChange={handleSpeakingChange}
-              onTranscriptUpdate={handleTranscriptUpdate}
-              onInterviewEnd={handleInterviewEnd}
-              disabled={interviewEnded}
-            />
+            {usageCheck && !usageCheck.canStart ? (
+              <div className="text-center space-y-4">
+                <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Interview Limit Reached</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You've used all your interviews for this month. Upgrade your plan to continue practicing.
+                  </p>
+                  <Button onClick={() => navigate('/subscription')} className="w-full">
+                    View Plans
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <RealtimeVoiceInterface
+                agentId={getAgentId(chatType) || ""}
+                interviewType={chatType}
+                variant={config.voiceVariant}
+                onSpeakingChange={handleSpeakingChange}
+                onListeningChange={setIsListening}
+                onTranscriptUpdate={handleTranscriptUpdate}
+                onInterviewEnd={() => {
+                  handleInterviewEnd();
+                }}
+                onInterviewIdReceived={setInterviewId}
+                disabled={interviewEnded || (usageCheck && !usageCheck.canStart)}
+              />
+            )}
           </div>
         </div>
       </main>
+
+      {/* Limit Reached Dialog */}
+      <AlertDialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Interview Limit Reached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've used all your interviews for this month. Upgrade your plan to continue practicing with unlimited interviews.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => navigate('/subscription')}>
+              View Plans
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

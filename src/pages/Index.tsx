@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { GraduationCap, Briefcase, Plane, Sparkles, Mic, Brain } from "lucide-react";
+import { GraduationCap, Briefcase, Plane, Sparkles, Mic, Brain, LogIn, UserPlus } from "lucide-react";
 import { CategoryCard } from "@/components/CategoryCard";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
 
   return (
     <div className="min-h-screen px-4 py-8 md:py-12">

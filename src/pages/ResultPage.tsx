@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Home, RotateCcw, Loader2, Award, TrendingUp, AlertCircle, CheckCircle, XCircle, Plane, Briefcase, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { interviewsAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,7 @@ const ResultPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IELTSResult | JobResult | VisaResult | null>(null);
 
+  const interviewId = location.state?.interviewId;
   const transcript = location.state?.transcript || "No transcript available. This is a demo result.";
 
   useEffect(() => {
@@ -55,19 +56,35 @@ const ResultPage = () => {
         setIsLoading(true);
         setError(null);
 
-        const { data, error: fnError } = await supabase.functions.invoke('analyze-interview', {
-          body: { type: resultType, transcript }
-        });
-
-        if (fnError) {
-          throw new Error(fnError.message);
+        if (!interviewId) {
+          throw new Error('Interview ID not found');
         }
 
-        if (data.error) {
-          throw new Error(data.error);
-        }
+        // Analyze interview using Django backend
+        const data = await interviewsAPI.analyze(interviewId);
 
-        setResult(data);
+        // Map Django response to frontend format
+        if (resultType === 'visa') {
+          const visaResult: VisaResult = {
+            approved: data.decision === 'approved',
+            confidence: data.score || 0,
+            positiveFactors: Array.isArray(data.feedback?.positive_factors) 
+              ? data.feedback.positive_factors 
+              : data.feedback?.positive_factors 
+                ? [data.feedback.positive_factors] 
+                : [],
+            concerns: Array.isArray(data.feedback?.concerns) 
+              ? data.feedback.concerns 
+              : data.feedback?.concerns 
+                ? [data.feedback.concerns] 
+                : [],
+            feedback: data.feedback?.feedback || data.feedback?.summary || 'No feedback available.',
+          };
+          setResult(visaResult);
+        } else {
+          // For other types, use the feedback structure
+          setResult(data.feedback as IELTSResult | JobResult);
+        }
       } catch (err) {
         console.error('Error analyzing interview:', err);
         setError(err instanceof Error ? err.message : 'Failed to analyze interview');

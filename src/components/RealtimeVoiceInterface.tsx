@@ -3,26 +3,30 @@ import { useConversation } from '@elevenlabs/react';
 import { Mic, MicOff, Phone, PhoneOff, Loader2, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { interviewsAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface RealtimeVoiceInterfaceProps {
   agentId: string;
+  interviewType: string; // e.g., 'visa-work', 'visa-student', etc.
   variant: 'ielts' | 'job' | 'visa';
   onSpeakingChange: (speaking: boolean) => void;
   onListeningChange: (listening: boolean) => void;
   onTranscriptUpdate: (userText: string, aiText: string) => void;
   onInterviewEnd: () => void;
+  onInterviewIdReceived?: (interviewId: string) => void;
   disabled?: boolean;
 }
 
 export function RealtimeVoiceInterface({
   agentId,
+  interviewType,
   variant,
   onSpeakingChange,
   onListeningChange,
   onTranscriptUpdate,
   onInterviewEnd,
+  onInterviewIdReceived,
   disabled = false,
 }: RealtimeVoiceInterfaceProps) {
   const { toast } = useToast();
@@ -103,13 +107,16 @@ export function RealtimeVoiceInterface({
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Get token from edge function
-      const { data, error } = await supabase.functions.invoke('elevenlabs-conversation-token', {
-        body: { agentId }
-      });
+      // Get token from Django backend
+      const data = await interviewsAPI.getConversationToken(agentId, interviewType);
 
-      if (error || !data?.token) {
-        throw new Error(error?.message || 'Failed to get conversation token');
+      if (!data?.token) {
+        throw new Error('Failed to get conversation token');
+      }
+
+      // Store interview ID if provided
+      if (data.interview_id && onInterviewIdReceived) {
+        onInterviewIdReceived(data.interview_id);
       }
 
       // Start the conversation with WebRTC for lowest latency
@@ -132,7 +139,7 @@ export function RealtimeVoiceInterface({
         description: error instanceof Error ? error.message : 'Could not start interview',
       });
     }
-  }, [agentId, disabled, isConnecting, conversation, toast]);
+  }, [agentId, interviewType, disabled, isConnecting, conversation, toast]);
 
   const endConversation = useCallback(async () => {
     await conversation.endSession();

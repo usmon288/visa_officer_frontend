@@ -1,6 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Briefcase, GraduationCap, Palmtree, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { subscriptionsAPI } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 interface VisaTypeCardProps {
@@ -48,6 +51,33 @@ function VisaTypeCard({ title, description, icon, visaType, onClick, delay = 0 }
 
 const VisaSelectPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [usage, setUsage] = useState<{ canStart: boolean } | null>(null);
+
+  useEffect(() => {
+    const checkUsage = async () => {
+      try {
+        const usageData = await subscriptionsAPI.getUsage();
+        setUsage(usageData);
+      } catch (error) {
+        console.error('Failed to check usage:', error);
+      }
+    };
+    checkUsage();
+  }, []);
+
+  const handleVisaTypeClick = (visaType: string) => {
+    if (usage && !usage.canStart) {
+      toast({
+        variant: 'destructive',
+        title: 'Interview Limit Reached',
+        description: 'You\'ve used all your interviews for this month. Please upgrade your plan.',
+      });
+      navigate('/subscription');
+      return;
+    }
+    navigate(`/chat/visa-${visaType}`);
+  };
 
   const visaTypes = [
     {
@@ -118,7 +148,7 @@ const VisaSelectPage = () => {
               description={visa.description}
               icon={visa.icon}
               visaType={visa.id}
-              onClick={() => navigate(`/chat/visa-${visa.id}`)}
+              onClick={() => handleVisaTypeClick(visa.id)}
               delay={100 + index * 100}
             />
           ))}
