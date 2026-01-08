@@ -25,7 +25,7 @@ interface RegisterData {
   email: string;
   username: string;
   password: string;
-  password_retype: string;
+  re_password: string;
   full_name?: string;
   phone?: string;
 }

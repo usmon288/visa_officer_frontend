@@ -16,7 +16,7 @@ export default function Register() {
     email: '',
     username: '',
     password: '',
-    password_retype: '',
+    re_password: '',
     full_name: '',
     phone: '',
   });
@@ -25,7 +25,7 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.password_retype) {
+    if (formData.password !== formData.re_password) {
       toast({
         variant: 'destructive',
         title: 'Password mismatch',
@@ -50,7 +50,7 @@ export default function Register() {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-        password_retype: formData.password_retype,
+        re_password: formData.re_password,
         full_name: formData.full_name || undefined,
         phone: formData.phone || undefined,
       });
@@ -162,15 +162,15 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password_retype">Confirm Password *</Label>
+              <Label htmlFor="re_password">Confirm Password *</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="password_retype"
+                  id="re_password"
                   type="password"
                   placeholder="••••••••"
-                  value={formData.password_retype}
-                  onChange={(e) => setFormData({ ...formData, password_retype: e.target.value })}
+                  value={formData.re_password}
+                  onChange={(e) => setFormData({ ...formData, re_password: e.target.value })}
                   required
                   minLength={8}
                   className="pl-10"
