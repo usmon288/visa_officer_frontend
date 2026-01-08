@@ -52,7 +52,7 @@ function VisaTypeCard({ title, description, icon, visaType, onClick, delay = 0 }
 const VisaSelectPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [usage, setUsage] = useState<{ canStart: boolean } | null>(null);
+  const [usage, setUsage] = useState<{ can_start_interview: boolean } | null>(null);
 
   useEffect(() => {
     const checkUsage = async () => {
@@ -67,7 +67,7 @@ const VisaSelectPage = () => {
   }, []);
 
   const handleVisaTypeClick = (visaType: string) => {
-    if (usage && !usage.canStart) {
+    if (usage && !usage.can_start_interview) {
       toast({
         variant: 'destructive',
         title: 'Interview Limit Reached',
