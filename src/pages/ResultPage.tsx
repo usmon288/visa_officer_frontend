@@ -60,8 +60,33 @@ const ResultPage = () => {
           throw new Error('Interview ID not found');
         }
 
-        // Analyze interview using Django backend
-        const data = await interviewsAPI.analyze(interviewId);
+        // Wait for webhook to process (ElevenLabs sends webhook 2-3 seconds after call ends)
+        // Retry up to 5 times with 3-second delays
+        let data;
+        let attempt = 0;
+        const maxAttempts = 5;
+        
+        while (attempt < maxAttempts) {
+          attempt++;
+          
+          try {
+            // Analyze interview using Django backend
+            data = await interviewsAPI.analyze(interviewId);
+            break; // Success, exit retry loop
+          } catch (err: any) {
+            const errorMessage = err?.message || err?.toString() || '';
+            
+            // If transcript is empty and we have retries left, wait and try again
+            if (errorMessage.includes('transcript is empty') && attempt < maxAttempts) {
+              console.log(`Transcript not ready yet, waiting 3 seconds... (attempt ${attempt}/${maxAttempts})`);
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              continue;
+            }
+            
+            // If it's another error or we're out of retries, throw
+            throw err;
+          }
+        }
 
         // Map Django response to frontend format
         if (resultType === 'visa') {
