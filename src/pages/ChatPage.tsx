@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Info, AlertCircle } from "lucide-react";
+import { ArrowLeft, MessageSquare, Info, AlertCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoStyleAvatar } from "@/components/VideoStyleAvatar";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
@@ -206,15 +206,16 @@ const ChatPage = () => {
   const handleInterviewEnd = useCallback(() => {
     setInterviewEnded(true);
     setIsListening(false);
+  }, []);
+
+  const handleViewResults = useCallback(() => {
     const transcript = messages.map(m => 
       `${m.isUser ? 'Candidate' : 'Interviewer'}: ${m.text}`
     ).join('\n\n');
     
-    setTimeout(() => {
-      navigate(`/result/${chatType}`, { 
-        state: { transcript, messages, interviewId } 
-      });
-    }, 1500);
+    navigate(`/result/${chatType}`, { 
+      state: { transcript, messages, interviewId } 
+    });
   }, [messages, chatType, navigate, interviewId]);
 
   return (
@@ -328,6 +329,38 @@ const ChatPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Interview Ended Overlay */}
+      {interviewEnded && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-card border border-border rounded-lg p-8 max-w-md mx-4 text-center space-y-6 animate-scale-in">
+            <div className="flex justify-center">
+              <div className="h-16 w-16 rounded-full bg-accent/20 flex items-center justify-center">
+                <FileText className="h-8 w-8 text-accent" />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold text-foreground">
+                Interview Complete
+              </h2>
+              <p className="text-muted-foreground">
+                Thank you for your time. Our officer is now reviewing your interview and preparing your detailed evaluation. This should only take a moment.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <Button 
+                onClick={handleViewResults}
+                size="lg"
+                className="w-full"
+              >
+                View Your Results
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Limit Reached Dialog */}
       <AlertDialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
