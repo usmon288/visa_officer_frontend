@@ -28,9 +28,9 @@ interface Message {
   timestamp: Date;
 }
 
-type AvatarVariant = "ielts" | "job" | "visa-work" | "visa-student" | "visa-worktravel" | "visa-travel";
-type TranscriptVariant = "ielts" | "job" | "visa";
-type VoiceVariant = "ielts" | "job" | "visa";
+type AvatarVariant = "ielts" | "visa-work" | "visa-student" | "visa-worktravel" | "visa-travel";
+type TranscriptVariant = "ielts" | "visa";
+type VoiceVariant = "ielts" | "visa";
 
 const pageConfig: Record<string, {
   title: string;
@@ -53,19 +53,6 @@ const pageConfig: Record<string, {
     avatarVariant: "ielts",
     transcriptVariant: "ielts",
     voiceVariant: "ielts",
-  },
-  job: {
-    title: "Job Interview",
-    subtitle: "Live Session with Michael Chen",
-    gradient: "from-zinc-900/50 to-background",
-    tips: [
-      "Be confident and professional",
-      "Share specific examples from your experience",
-      "Show enthusiasm for the role",
-    ],
-    avatarVariant: "job",
-    transcriptVariant: "job",
-    voiceVariant: "job",
   },
   "visa-work": {
     title: "Work Visa Interview",

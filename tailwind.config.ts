@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        sans: ["'Inter'", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -64,17 +64,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        ielts: {
-          DEFAULT: "hsl(200 90% 50%)",
-          dark: "hsl(220 85% 55%)",
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
-        job: {
-          DEFAULT: "hsl(150 70% 45%)",
-          dark: "hsl(170 80% 40%)",
+        ielts: {
+          DEFAULT: "hsl(197 92% 45%)",
+          dark: "hsl(207 85% 55%)",
         },
         visa: {
-          DEFAULT: "hsl(280 70% 55%)",
-          dark: "hsl(300 65% 50%)",
+          DEFAULT: "hsl(217 33% 30%)",
+          dark: "hsl(217 33% 17%)",
         },
       },
       borderRadius: {
@@ -85,9 +85,11 @@ export default {
         "2xl": "calc(var(--radius) + 8px)",
       },
       boxShadow: {
-        soft: "var(--shadow-sm)",
-        medium: "var(--shadow-md)",
-        large: "var(--shadow-lg)",
+        xs: "var(--shadow-xs)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
         glow: "var(--shadow-glow)",
       },
       keyframes: {
