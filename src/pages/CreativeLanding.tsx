@@ -38,7 +38,6 @@ function LiveVideoDemo() {
 
       <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8">
         <motion.div
-          className="relative"
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
@@ -50,13 +49,6 @@ function LiveVideoDemo() {
               className="w-full h-full object-cover"
             />
           </div>
-          <motion.div
-            className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-500 rounded-full text-xs text-white font-medium"
-            animate={isSpeaking ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}
-          >
-            AI Examiner
-          </motion.div>
         </motion.div>
 
         <motion.div
@@ -85,7 +77,6 @@ function LiveVideoDemo() {
         </motion.div>
 
         <motion.div
-          className="relative"
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
@@ -97,13 +88,6 @@ function LiveVideoDemo() {
               className="w-full h-full object-cover"
             />
           </div>
-          <motion.div
-            className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 rounded-full text-xs text-white font-medium"
-            animate={!isSpeaking ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.5, repeat: !isSpeaking ? Infinity : 0 }}
-          >
-            You
-          </motion.div>
         </motion.div>
       </div>
 
