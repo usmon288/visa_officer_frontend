@@ -1,89 +1,68 @@
 import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-
-const COLORS = [
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#ec4899', // pink
-  '#f97316', // orange
-  '#84cc16', // lime
-  '#6366f1', // indigo
-  '#14b8a6', // teal
-];
-
-interface Bar {
-  id: number;
-  x: number;
-  y: number;
-  width: number;
-  color: string;
-  delay: number;
-  duration: number;
-  direction: 'left' | 'right';
-}
-
-const generateBars = (count: number): Bar[] => {
-  const bars: Bar[] = [];
-  const rows = 20;
-  const barsPerRow = Math.ceil(count / rows);
-
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < barsPerRow; col++) {
-      const id = row * barsPerRow + col;
-      if (id >= count) break;
-
-      bars.push({
-        id,
-        x: col * 60 + (row % 2 === 0 ? 0 : 30),
-        y: row * 32,
-        width: 40 + Math.random() * 30,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        delay: Math.random() * 2,
-        duration: 2 + Math.random() * 3,
-        direction: Math.random() > 0.5 ? 'left' : 'right',
-      });
-    }
-  }
-
-  return bars;
-};
 
 export function AnimatedBars() {
-  const bars = useRef(generateBars(200)).current;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    let animationId: number;
+    let time = 0;
+    const waves = [
+      { phase: 0, frequency: 0.03, amplitude: 80, color: '#10b98130' },
+      { phase: Math.PI / 3, frequency: 0.025, amplitude: 100, color: '#3b82f625' },
+      { phase: (2 * Math.PI) / 3, frequency: 0.02, amplitude: 60, color: '#f59e0b20' },
+    ];
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      time += 0.01;
+
+      waves.forEach((wave) => {
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+
+        for (let x = 0; x < canvas.width; x += 5) {
+          const y =
+            canvas.height / 2 +
+            Math.sin(x * wave.frequency + time + wave.phase) * wave.amplitude +
+            Math.sin(x * wave.frequency * 0.5 + time * 0.5) * (wave.amplitude * 0.3);
+          ctx.lineTo(x, y);
+        }
+
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fillStyle = wave.color;
+        ctx.fill();
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden opacity-40">
-      <div className="absolute inset-0" style={{ transform: 'rotate(-15deg) scale(1.5)', transformOrigin: 'center' }}>
-        {bars.map((bar) => (
-          <motion.div
-            key={bar.id}
-            className="absolute rounded-full"
-            style={{
-              left: bar.x,
-              top: bar.y,
-              width: bar.width,
-              height: 12,
-              backgroundColor: bar.color,
-            }}
-            initial={{ opacity: 0.3, x: bar.direction === 'left' ? -20 : 20 }}
-            animate={{
-              opacity: [0.3, 0.8, 0.3],
-              x: bar.direction === 'left' ? [-20, 20, -20] : [20, -20, 20],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{
-              duration: bar.duration,
-              delay: bar.delay,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
-      </div>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+    />
   );
 }
 
@@ -97,56 +76,7 @@ export function AnimatedBarsGrid() {
 }
 
 export function FloatingBarsSphere() {
-  const rows = 12;
-  const barsPerRow = 16;
-  const radius = 180;
-
   return (
-    <div className="relative w-[400px] h-[400px]">
-      <motion.div
-        className="absolute inset-0"
-        animate={{ rotateY: 360 }}
-        transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-        style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
-      >
-        {Array.from({ length: rows }).map((_, rowIndex) => {
-          const rowAngle = (rowIndex / rows) * Math.PI;
-          const rowRadius = Math.sin(rowAngle) * radius;
-          const y = Math.cos(rowAngle) * radius;
-
-          return Array.from({ length: barsPerRow }).map((_, barIndex) => {
-            const angle = (barIndex / barsPerRow) * Math.PI * 2;
-            const x = Math.cos(angle) * rowRadius;
-            const z = Math.sin(angle) * rowRadius;
-            const color = COLORS[(rowIndex + barIndex) % COLORS.length];
-
-            return (
-              <motion.div
-                key={`${rowIndex}-${barIndex}`}
-                className="absolute rounded-full"
-                style={{
-                  width: 24,
-                  height: 8,
-                  backgroundColor: color,
-                  left: '50%',
-                  top: '50%',
-                  transform: `translate3d(${x}px, ${y}px, ${z}px) rotateY(${angle}rad)`,
-                  opacity: 0.8,
-                }}
-                animate={{
-                  opacity: [0.4, 0.9, 0.4],
-                }}
-                transition={{
-                  duration: 2 + Math.random() * 2,
-                  delay: Math.random() * 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              />
-            );
-          });
-        })}
-      </motion.div>
-    </div>
+    <div className="relative w-[400px] h-[400px]" />
   );
 }
