@@ -11,7 +11,6 @@ export default function Register() {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     email: '',
-    username: '',
     password: '',
     re_password: '',
     full_name: '',
@@ -45,19 +44,17 @@ export default function Register() {
     try {
       await register({
         email: formData.email,
-        username: formData.username,
         password: formData.password,
-        re_password: formData.re_password,
         full_name: formData.full_name || undefined,
         phone: formData.phone || undefined,
       });
 
       toast({
         title: 'Registration successful!',
-        description: 'Please check your email to verify your account.',
+        description: 'You can now log in to your account.',
       });
 
-      navigate('/verify-email', { state: { email: formData.email } });
+      navigate('/login');
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -131,38 +128,20 @@ export default function Register() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="email" className="block text-sm text-white/70 mb-2">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  disabled={loading}
-                  className={inputClass}
-                  placeholder="you@example.com"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="username" className="block text-sm text-white/70 mb-2">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
-                  disabled={loading}
-                  className={inputClass}
-                  placeholder="johndoe"
-                />
-              </div>
+            <div>
+              <label htmlFor="email" className="block text-sm text-white/70 mb-2">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                disabled={loading}
+                className={inputClass}
+                placeholder="you@example.com"
+              />
             </div>
 
             <div>

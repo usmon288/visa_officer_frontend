@@ -10,15 +10,6 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 gsap.registerPlugin(ScrollTrigger);
 
 function LiveVideoDemo() {
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsSpeaking(prev => !prev);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60 dark:from-transparent dark:via-black/40 dark:to-black/80 z-10" />
@@ -35,73 +26,50 @@ function LiveVideoDemo() {
           className="w-full h-full object-cover"
         />
       </motion.div>
-
-      <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8">
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
-            <img
-              src="https://images.pexels.com/photos/3184357/pexels-photo-3184357.jpeg?auto=compress&cs=tinysrgb&w=300"
-              alt="Examiner"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </motion.div>
-
-        <motion.div
-          className="flex flex-col items-center gap-2"
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.8 }}
-        >
-          <div className="flex gap-1">
-            {[...Array(5)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="w-1 bg-emerald-400 rounded-full"
-                animate={{
-                  height: isSpeaking ? ["8px", "24px", "8px"] : "8px",
-                }}
-                transition={{
-                  duration: 0.4,
-                  delay: i * 0.08,
-                  repeat: isSpeaking ? Infinity : 0
-                }}
-              />
-            ))}
-          </div>
-          <span className="text-white/60 text-xs">LIVE</span>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-emerald-400/50 shadow-2xl">
-            <img
-              src="https://images.pexels.com/photos/3769021/pexels-photo-3769021.jpeg?auto=compress&cs=tinysrgb&w=300"
-              alt="Student"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </motion.div>
-      </div>
-
-      <motion.div
-        className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 px-6 py-3 bg-black/60 dark:bg-white/10 backdrop-blur-xl rounded-full border border-white/20"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1 }}
-      >
-        <p className="text-white/90 text-sm md:text-base">
-          {isSpeaking ? '"Tell me about yourself..."' : '"I am a student from..."'}
-        </p>
-      </motion.div>
     </div>
+  );
+}
+
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  const toggleTheme = () => {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    if (newIsDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
+  return (
+    <motion.button
+      onClick={toggleTheme}
+      className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-transform"
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 1, type: "spring" }}
+      whileHover={{ rotate: 15 }}
+      whileTap={{ scale: 0.9 }}
+    >
+      {isDark ? (
+        <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+        </svg>
+      ) : (
+        <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+        </svg>
+      )}
+    </motion.button>
   );
 }
 
@@ -454,6 +422,7 @@ export default function CreativeLanding() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white overflow-x-hidden transition-colors duration-500">
+      <ThemeToggle />
       <Navbar />
 
       <motion.section
