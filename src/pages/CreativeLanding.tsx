@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
+import { InterviewVideoBackground } from '@/components/InterviewVideoBackground';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -456,8 +457,7 @@ export default function CreativeLanding() {
         className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
         style={{ opacity: heroOpacity, scale: heroScale }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black z-10" />
-
+        <InterviewVideoBackground />
         <AnimatedPills />
 
         <div className="relative z-20 text-center px-6 max-w-5xl mx-auto">
