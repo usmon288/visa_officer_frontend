@@ -11,82 +11,111 @@ gsap.registerPlugin(ScrollTrigger);
 
 function LiveVideoDemo() {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsSpeaking(prev => {
-        const newSpeaking = !prev;
-        if (newSpeaking) {
-          setIsListening(false);
-        } else {
-          setTimeout(() => setIsListening(true), 500);
-        }
-        return newSpeaking;
-      });
+      setIsSpeaking(prev => !prev);
     }, 3000);
-
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-blue-500/10 dark:from-emerald-500/20 dark:via-teal-500/10 dark:to-blue-500/20" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60 dark:from-transparent dark:via-black/40 dark:to-black/80 z-10" />
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 1.1 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-        className="relative w-full max-w-4xl mx-auto"
+        transition={{ duration: 2, ease: "easeOut" }}
+        className="absolute inset-0"
       >
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/20 via-transparent to-transparent blur-3xl" />
+        <img
+          src="https://images.pexels.com/photos/7709219/pexels-photo-7709219.jpeg?auto=compress&cs=tinysrgb&w=1920"
+          alt="Interview"
+          className="w-full h-full object-cover"
+        />
+      </motion.div>
+
+      <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8">
         <motion.div
-          animate={{
-            scale: [1, 1.02, 1],
-            opacity: [0.6, 0.8, 0.6]
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
           className="relative"
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
         >
-          <VideoStyleAvatar
-            variant="visa-student"
-            isSpeaking={isSpeaking}
-            isListening={isListening}
-          />
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+            <img
+              src="https://images.pexels.com/photos/3184357/pexels-photo-3184357.jpeg?auto=compress&cs=tinysrgb&w=300"
+              alt="Examiner"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <motion.div
+            className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-500 rounded-full text-xs text-white font-medium"
+            animate={isSpeaking ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}
+          >
+            AI Examiner
+          </motion.div>
         </motion.div>
 
         <motion.div
-          className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 dark:bg-white/10 backdrop-blur-xl rounded-full border border-white/10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center gap-2"
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="w-1 bg-emerald-400 rounded-full"
+                animate={{
+                  height: isSpeaking ? ["8px", "24px", "8px"] : "8px",
+                }}
+                transition={{
+                  duration: 0.4,
+                  delay: i * 0.08,
+                  repeat: isSpeaking ? Infinity : 0
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-white/60 text-xs">LIVE</span>
+        </motion.div>
+
+        <motion.div
+          className="relative"
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1">
-              {[...Array(3)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="w-1 h-3 bg-emerald-400 rounded-full"
-                  animate={isSpeaking ? {
-                    height: ["12px", "20px", "12px"],
-                  } : {}}
-                  transition={{
-                    duration: 0.6,
-                    delay: i * 0.1,
-                    repeat: isSpeaking ? Infinity : 0
-                  }}
-                />
-              ))}
-            </div>
-            <span className="text-white/80 text-sm">
-              {isSpeaking ? "AI Speaking..." : "Listening..."}
-            </span>
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-emerald-400/50 shadow-2xl">
+            <img
+              src="https://images.pexels.com/photos/3769021/pexels-photo-3769021.jpeg?auto=compress&cs=tinysrgb&w=300"
+              alt="Student"
+              className="w-full h-full object-cover"
+            />
           </div>
+          <motion.div
+            className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 rounded-full text-xs text-white font-medium"
+            animate={!isSpeaking ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.5, repeat: !isSpeaking ? Infinity : 0 }}
+          >
+            You
+          </motion.div>
         </motion.div>
+      </div>
+
+      <motion.div
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 px-6 py-3 bg-black/60 dark:bg-white/10 backdrop-blur-xl rounded-full border border-white/20"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+      >
+        <p className="text-white/90 text-sm md:text-base">
+          {isSpeaking ? '"Tell me about yourself..."' : '"I am a student from..."'}
+        </p>
       </motion.div>
     </div>
   );
@@ -162,6 +191,7 @@ function CategoryCard({
   description,
   icon,
   color,
+  image,
   onClick,
   delay,
 }: {
@@ -169,6 +199,7 @@ function CategoryCard({
   description: string;
   icon: string;
   color: string;
+  image: string;
   onClick: () => void;
   delay: number;
 }) {
@@ -182,35 +213,35 @@ function CategoryCard({
       transition={{ delay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -4 }}
     >
-      <div className="relative overflow-hidden rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] p-8 h-full transition-colors">
-        <div
-          className="absolute top-0 left-0 w-full h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
-        />
-
-        <div className="flex items-start justify-between mb-6">
-          <span className="text-5xl">{icon}</span>
-          <motion.svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="text-gray-400 dark:text-white/20 group-hover:text-gray-600 dark:group-hover:text-white/60 transition-colors"
-            whileHover={{ x: 4 }}
-          >
-            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </motion.svg>
+      <div className="relative overflow-hidden rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] h-full transition-colors">
+        <div className="relative h-48 overflow-hidden">
+          <img
+            src={image}
+            alt={title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-4 left-4">
+            <span className="text-4xl">{icon}</span>
+          </div>
         </div>
 
-        <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-gray-600 dark:text-white/50 text-base leading-relaxed">{description}</p>
+        <div className="p-6">
+          <div
+            className="absolute top-0 left-0 w-full h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
+          />
 
-        <motion.div
-          className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-white/20 to-transparent"
-          initial={{ scaleX: 0 }}
-          whileHover={{ scaleX: 1 }}
-          transition={{ duration: 0.4 }}
-        />
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+          <p className="text-gray-600 dark:text-white/50 text-sm leading-relaxed">{description}</p>
+
+          <div className="mt-4 flex items-center gap-2 text-emerald-500 dark:text-emerald-400 text-sm font-medium">
+            Start Practice
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="group-hover:translate-x-1 transition-transform">
+              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
       </div>
     </motion.button>
   );
@@ -243,11 +274,13 @@ function FeatureSection() {
       description: 'Practice with AI that simulates real embassy officers. Get feedback on your answers and improve your confidence.',
       icon: '🛂',
       color: '#10b981',
+      image: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=600',
       path: '/visa',
     },
     {
       title: 'IELTS Speaking',
       description: 'Prepare for all three parts of the IELTS speaking test. Get band score predictions and detailed feedback.',
+      image: 'https://images.pexels.com/photos/4145153/pexels-photo-4145153.jpeg?auto=compress&cs=tinysrgb&w=600',
       icon: '🎓',
       color: '#3b82f6',
       path: '/chat/ielts',
