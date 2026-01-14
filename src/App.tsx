@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import NewIndex from "./pages/NewIndex";
+import CinematicIndex from "./pages/CinematicIndex";
 import PricingPage from "./pages/PricingPage";
 import Dashboard from "./pages/Dashboard";
 import ChatPage from "./pages/ChatPage";
@@ -38,7 +38,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<NewIndex />} />
+            <Route path="/" element={<CinematicIndex />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
