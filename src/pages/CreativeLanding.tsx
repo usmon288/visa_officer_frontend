@@ -7,85 +7,60 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16'];
+function LiveConversation() {
+  const [messages, setMessages] = useState<{ text: string; isAI: boolean }[]>([]);
 
-function AnimatedPills() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pillsRef = useRef<Array<{
-    x: number; y: number; width: number; height: number;
-    color: string; speed: number; opacity: number; phase: number;
-  }>>([]);
+  const conversation = [
+    { text: "Tell me about your study plans in the US", isAI: true },
+    { text: "I'm planning to pursue Computer Science at MIT", isAI: false },
+    { text: "Why did you choose this specific program?", isAI: true },
+    { text: "The AI research lab aligns with my goals", isAI: false },
+    { text: "How will you finance your education?", isAI: true },
+    { text: "My family will support me financially", isAI: false },
+  ];
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const rows = 25;
-    const cols = 30;
-    const pills: typeof pillsRef.current = [];
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const baseX = col * 65 + (row % 2) * 32;
-        const baseY = row * 28;
-        pills.push({
-          x: baseX,
-          y: baseY,
-          width: 35 + Math.random() * 20,
-          height: 10,
-          color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          speed: 0.5 + Math.random() * 1.5,
-          opacity: 0.3 + Math.random() * 0.5,
-          phase: Math.random() * Math.PI * 2,
-        });
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < conversation.length) {
+        setMessages(prev => [...prev, conversation[index]]);
+        index++;
+      } else {
+        setMessages([]);
+        index = 0;
       }
-    }
-    pillsRef.current = pills;
+    }, 2000);
 
-    let animationId: number;
-    let time = 0;
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      time += 0.02;
-
-      pills.forEach((pill) => {
-        const pulseOpacity = pill.opacity * (0.5 + 0.5 * Math.sin(time * pill.speed + pill.phase));
-
-        ctx.beginPath();
-        ctx.roundRect(pill.x, pill.y, pill.width, pill.height, pill.height / 2);
-        ctx.fillStyle = pill.color;
-        ctx.globalAlpha = pulseOpacity;
-        ctx.fill();
-      });
-
-      ctx.globalAlpha = 1;
-      animationId = requestAnimationFrame(animate);
-    };
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animationId);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 pointer-events-none"
-      style={{ transform: 'rotate(-12deg) scale(1.4)', transformOrigin: 'center' }}
-    />
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+      <div className="w-full max-w-2xl px-6 space-y-4">
+        <AnimatePresence mode="popLayout">
+          {messages.map((msg, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 0.6, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.4 }}
+              className={`flex ${msg.isAI ? 'justify-start' : 'justify-end'}`}
+            >
+              <div
+                className={`px-6 py-3 rounded-2xl max-w-md backdrop-blur-sm ${
+                  msg.isAI
+                    ? 'bg-emerald-500/20 border border-emerald-500/30'
+                    : 'bg-white/10 border border-white/20'
+                }`}
+              >
+                <p className="text-white text-sm">{msg.text}</p>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
 
@@ -458,7 +433,7 @@ export default function CreativeLanding() {
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black z-10" />
 
-        <AnimatedPills />
+        <LiveConversation />
 
         <div className="relative z-20 text-center px-6 max-w-5xl mx-auto">
           <motion.h1
