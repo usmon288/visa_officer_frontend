@@ -3,7 +3,7 @@
  * Handles all API calls to the Django REST Framework backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://visa.up.railway.app/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://visa-backend-545633587771.us-central1.run.app/api';
 
 // Token management
 const getToken = (): string | null => {
