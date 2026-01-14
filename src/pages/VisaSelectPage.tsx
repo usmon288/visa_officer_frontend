@@ -1,51 +1,93 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, GraduationCap, Palmtree, Plane } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import { subscriptionsAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { Navbar } from "@/components/layout/Navbar";
 
-interface VisaTypeCardProps {
+interface VisaType {
+  id: string;
   title: string;
   description: string;
-  icon: React.ReactNode;
-  visaType: string;
-  onClick: () => void;
-  delay?: number;
+  icon: string;
+  visaCodes: string;
 }
 
-function VisaTypeCard({ title, description, icon, visaType, onClick, delay = 0 }: VisaTypeCardProps) {
+const visaTypes: VisaType[] = [
+  {
+    id: "work",
+    title: "Work Visa",
+    description: "Practice for H-1B, L-1, work permit interviews. Questions about employment, qualifications, and job offers.",
+    icon: "💼",
+    visaCodes: "H-1B, L-1, O-1",
+  },
+  {
+    id: "student",
+    title: "Student Visa",
+    description: "Prepare for F-1, J-1, student visa interviews. Questions about education plans, finances, and ties to home.",
+    icon: "📚",
+    visaCodes: "F-1, J-1, M-1",
+  },
+  {
+    id: "worktravel",
+    title: "Work & Travel",
+    description: "Practice for J-1 Summer Work Travel interviews. Questions about program plans and return intentions.",
+    icon: "🌍",
+    visaCodes: "J-1 Summer",
+  },
+  {
+    id: "travel",
+    title: "Tourist Visa",
+    description: "Simulate B-1/B-2 tourist visa interviews. Questions about travel plans, finances, and home ties.",
+    icon: "✈️",
+    visaCodes: "B-1, B-2",
+  },
+];
+
+function VisaCard({ visa, onClick, index }: { visa: VisaType; onClick: () => void; index: number }) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={cn(
-        "group relative flex flex-col items-start gap-4 rounded-2xl border bg-card p-6 text-left shadow-soft transition-all duration-300",
-        "hover:shadow-large hover:scale-[1.02] hover:border-visa/50",
-        "animate-slide-up"
-      )}
-      style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
+      className="group relative w-full text-left"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.98 }}
     >
-      {/* Icon */}
-      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-visa to-visa-dark shadow-medium">
-        {icon}
-      </div>
+      <div className="relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] p-8 h-full transition-colors hover:bg-white/[0.05]">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      {/* Content */}
-      <div>
-        <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-visa transition-colors">
-          {title}
+        <div className="flex items-start justify-between mb-6">
+          <span className="text-5xl">{visa.icon}</span>
+          <motion.div
+            className="px-3 py-1 rounded-full bg-white/5 text-white/40 text-xs font-medium"
+            whileHover={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+          >
+            {visa.visaCodes}
+          </motion.div>
+        </div>
+
+        <h3 className="text-2xl font-semibold text-white mb-2 group-hover:text-emerald-400 transition-colors">
+          {visa.title}
         </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {description}
+        <p className="text-white/50 text-base leading-relaxed">
+          {visa.description}
         </p>
-      </div>
 
-      {/* Arrow indicator */}
-      <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ArrowLeft className="h-5 w-5 text-visa rotate-180" />
+        <motion.div
+          className="mt-6 flex items-center gap-2 text-emerald-400 text-sm font-medium"
+          initial={{ x: 0 }}
+          whileHover={{ x: 4 }}
+        >
+          Start Practice
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </motion.div>
       </div>
-    </button>
+    </motion.button>
   );
 }
 
@@ -79,105 +121,82 @@ const VisaSelectPage = () => {
     navigate(`/chat/visa-${visaType}`);
   };
 
-  const visaTypes = [
-    {
-      id: "work",
-      title: "Work Visa",
-      description: "Practice for H-1B, L-1, work permit interviews. Questions about employment, qualifications, and job offers.",
-      icon: <Briefcase className="h-7 w-7 text-primary-foreground" />,
-    },
-    {
-      id: "student",
-      title: "Student Visa",
-      description: "Prepare for F-1, J-1, student visa interviews. Questions about education plans, finances, and ties to home.",
-      icon: <GraduationCap className="h-7 w-7 text-primary-foreground" />,
-    },
-    {
-      id: "worktravel",
-      title: "Work & Travel Visa",
-      description: "Practice for J-1 Summer Work Travel interviews. Questions about program plans and return intentions.",
-      icon: <Palmtree className="h-7 w-7 text-primary-foreground" />,
-    },
-    {
-      id: "travel",
-      title: "Tourist Visa",
-      description: "Simulate B-1/B-2 tourist visa interviews. Questions about travel plans, finances, and home ties.",
-      icon: <Plane className="h-7 w-7 text-primary-foreground" />,
-    },
-  ];
-
   return (
-    <div className="min-h-screen px-4 py-8 md:py-12">
-      <div className="mx-auto max-w-4xl">
-        {/* Header */}
-        <header className="mb-8">
-          <Button
-            variant="ghost"
-            size="sm"
+    <div className="min-h-screen bg-black">
+      <Navbar />
+
+      <div className="pt-32 pb-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.button
             onClick={() => navigate("/")}
-            className="mb-4 gap-2"
+            className="flex items-center gap-2 text-white/50 hover:text-white mb-8 transition-colors"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Button>
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Back</span>
+          </motion.button>
 
-          <div 
-            className="text-center animate-fade-in"
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
           >
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-visa/20 to-visa-dark/20 px-4 py-2">
-              <Plane className="h-5 w-5 text-visa" />
-              <span className="text-sm font-semibold text-visa">Visa Interview Practice</span>
-            </div>
+            <motion.p
+              className="text-emerald-400 text-sm font-medium tracking-[0.2em] mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              US EMBASSY INTERVIEW
+            </motion.p>
 
-            <h1 className="text-4xl font-extrabold text-foreground mb-3">
-              Select Visa Type
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-white mb-4">
+              Select Your<br />
+              <span className="text-white/40">Visa Type</span>
             </h1>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Choose the type of visa interview you want to practice. Each interview 
-              will have specific questions based on real embassy interviews.
+
+            <p className="text-white/50 text-lg max-w-xl mx-auto">
+              Choose the type of visa interview you want to practice. Each session simulates real embassy questions.
             </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-16">
+            {visaTypes.map((visa, index) => (
+              <VisaCard
+                key={visa.id}
+                visa={visa}
+                onClick={() => handleVisaTypeClick(visa.id)}
+                index={index}
+              />
+            ))}
           </div>
-        </header>
 
-        {/* Visa Type Cards */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {visaTypes.map((visa, index) => (
-            <VisaTypeCard
-              key={visa.id}
-              title={visa.title}
-              description={visa.description}
-              icon={visa.icon}
-              visaType={visa.id}
-              onClick={() => handleVisaTypeClick(visa.id)}
-              delay={100 + index * 100}
-            />
-          ))}
-        </div>
-
-        {/* Info section */}
-        <div 
-          className="mt-12 rounded-2xl border bg-muted/30 p-6 animate-fade-in"
-          style={{ animationDelay: "500ms", animationFillMode: "backwards" }}
-        >
-          <h2 className="font-bold text-foreground mb-3">💡 Interview Tips</h2>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-visa mt-2" />
-              Be honest and consistent with all your answers
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-visa mt-2" />
-              Speak clearly and confidently, maintain eye contact
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-visa mt-2" />
-              Keep your answers brief but complete - don't over-explain
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-visa mt-2" />
-              Have all supporting documents ready to reference
-            </li>
-          </ul>
+          <motion.div
+            className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+              <span className="text-xl">💡</span>
+              Interview Tips
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                "Be honest and consistent with all your answers",
+                "Speak clearly and confidently, maintain eye contact",
+                "Keep your answers brief but complete",
+                "Have all supporting documents ready",
+              ].map((tip, i) => (
+                <div key={i} className="flex items-start gap-3 text-white/50 text-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
+                  {tip}
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </div>
     </div>

@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sparkles, LogIn, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Menu, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-interface NavbarProps {
-  transparent?: boolean;
-}
-
-export function Navbar({ transparent = false }: NavbarProps) {
+export function Navbar() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -25,81 +20,82 @@ export function Navbar({ transparent = false }: NavbarProps) {
   }, []);
 
   const navLinks = [
-    { name: "Features", href: "/#features" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "About", href: "/#about" },
+    { name: "VISA PREP", href: "/visa" },
+    { name: "IELTS", href: "/chat/ielts" },
+    { name: "PRICING", href: "/pricing" },
   ];
-
-  const showBackground = !transparent || scrolled;
 
   return (
     <motion.nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        showBackground
-          ? "bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-sm"
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
+        scrolled
+          ? "bg-black/80 backdrop-blur-xl"
           : "bg-transparent"
       )}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="section-container">
-        <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent shadow-md group-hover:shadow-glow transition-all duration-300">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              AI Interview
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between h-20">
+          <Link to="/" className="flex items-center gap-3">
+            <span className="text-2xl font-bold tracking-tight text-white">
+              prep<span className="text-emerald-400">AI</span>
             </span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-12">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 to={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-[13px] font-medium tracking-[0.1em] text-white/70 hover:text-white transition-colors"
               >
                 {link.name}
               </Link>
             ))}
           </div>
 
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-4">
             {isAuthenticated ? (
               <>
-                <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="text-[13px] font-medium tracking-wide text-white/70 hover:text-white transition-colors"
+                >
                   Dashboard
-                </Button>
-                <Button variant="ghost" onClick={logout}>
-                  Logout
-                </Button>
+                </button>
+                <button
+                  onClick={logout}
+                  className="px-5 py-2.5 rounded-full bg-white text-black text-[13px] font-semibold tracking-wide hover:bg-white/90 transition-colors"
+                >
+                  LOGOUT
+                </button>
               </>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => navigate("/login")}>
-                  <LogIn className="w-4 h-4 mr-2" />
+                <button
+                  onClick={() => navigate("/login")}
+                  className="text-[13px] font-medium tracking-wide text-white/70 hover:text-white transition-colors"
+                >
                   Sign in
-                </Button>
-                <Button onClick={() => navigate("/register")} className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Get Started
-                </Button>
+                </button>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="px-6 py-2.5 rounded-full bg-emerald-500 text-white text-[13px] font-semibold tracking-wide hover:bg-emerald-400 transition-colors"
+                >
+                  GET STARTED
+                </button>
               </>
             )}
           </div>
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg hover:bg-accent/10 transition-colors"
+            className="lg:hidden p-2 text-white"
           >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
@@ -107,70 +103,53 @@ export function Navbar({ transparent = false }: NavbarProps) {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            className="lg:hidden bg-background border-t border-border"
+            className="lg:hidden bg-black/95 backdrop-blur-xl border-t border-white/10"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3 }}
           >
-            <div className="section-container py-6 space-y-4">
+            <div className="px-6 py-8 space-y-6">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.href}
-                  className="block py-2 text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  className="block text-lg font-medium text-white/70 hover:text-white transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.name}
                 </Link>
               ))}
-              <div className="pt-4 border-t border-border space-y-2">
+              <div className="pt-6 border-t border-white/10 space-y-4">
                 {isAuthenticated ? (
                   <>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        navigate("/dashboard");
-                        setMobileMenuOpen(false);
-                      }}
+                    <button
+                      onClick={() => { navigate("/dashboard"); setMobileMenuOpen(false); }}
+                      className="block w-full text-left text-lg text-white/70"
                     >
                       Dashboard
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => {
-                        logout();
-                        setMobileMenuOpen(false);
-                      }}
+                    </button>
+                    <button
+                      onClick={() => { logout(); setMobileMenuOpen(false); }}
+                      className="w-full py-3 rounded-full bg-white text-black font-semibold"
                     >
                       Logout
-                    </Button>
+                    </button>
                   </>
                 ) : (
                   <>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        navigate("/login");
-                        setMobileMenuOpen(false);
-                      }}
+                    <button
+                      onClick={() => { navigate("/login"); setMobileMenuOpen(false); }}
+                      className="block w-full text-left text-lg text-white/70"
                     >
-                      <LogIn className="w-4 h-4 mr-2" />
                       Sign in
-                    </Button>
-                    <Button
-                      className="w-full bg-gradient-to-r from-primary to-accent"
-                      onClick={() => {
-                        navigate("/register");
-                        setMobileMenuOpen(false);
-                      }}
+                    </button>
+                    <button
+                      onClick={() => { navigate("/register"); setMobileMenuOpen(false); }}
+                      className="w-full py-3 rounded-full bg-emerald-500 text-white font-semibold"
                     >
-                      <UserPlus className="w-4 h-4 mr-2" />
                       Get Started
-                    </Button>
+                    </button>
                   </>
                 )}
               </div>

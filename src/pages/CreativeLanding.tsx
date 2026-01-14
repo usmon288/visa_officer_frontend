@@ -1,0 +1,522 @@
+import { useEffect, useRef, useState } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Navbar } from '@/components/layout/Navbar';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
+
+const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16'];
+
+function AnimatedPills() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pillsRef = useRef<Array<{
+    x: number; y: number; width: number; height: number;
+    color: string; speed: number; opacity: number; phase: number;
+  }>>([]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const rows = 25;
+    const cols = 30;
+    const pills: typeof pillsRef.current = [];
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const baseX = col * 65 + (row % 2) * 32;
+        const baseY = row * 28;
+        pills.push({
+          x: baseX,
+          y: baseY,
+          width: 35 + Math.random() * 20,
+          height: 10,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          speed: 0.5 + Math.random() * 1.5,
+          opacity: 0.3 + Math.random() * 0.5,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    }
+    pillsRef.current = pills;
+
+    let animationId: number;
+    let time = 0;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      time += 0.02;
+
+      pills.forEach((pill) => {
+        const pulseOpacity = pill.opacity * (0.5 + 0.5 * Math.sin(time * pill.speed + pill.phase));
+
+        ctx.beginPath();
+        ctx.roundRect(pill.x, pill.y, pill.width, pill.height, pill.height / 2);
+        ctx.fillStyle = pill.color;
+        ctx.globalAlpha = pulseOpacity;
+        ctx.fill();
+      });
+
+      ctx.globalAlpha = 1;
+      animationId = requestAnimationFrame(animate);
+    };
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+      style={{ transform: 'rotate(-12deg) scale(1.4)', transformOrigin: 'center' }}
+    />
+  );
+}
+
+function TalkButton({ onClick }: { onClick: () => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <motion.button
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="relative px-12 py-6 rounded-full bg-[#f5f5dc] text-black font-semibold text-lg tracking-wide overflow-hidden"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <span className="relative z-10 flex items-center gap-4">
+        START PRACTICE
+        <motion.span
+          className="flex items-center gap-1"
+          animate={{ opacity: isHovered ? 1 : 0.6 }}
+        >
+          {[...Array(4)].map((_, i) => (
+            <motion.span
+              key={i}
+              className="w-1.5 h-1.5 bg-black rounded-full"
+              animate={{
+                scale: isHovered ? [1, 1.5, 1] : 1,
+                opacity: isHovered ? [0.5, 1, 0.5] : 0.5,
+              }}
+              transition={{
+                duration: 0.6,
+                delay: i * 0.1,
+                repeat: isHovered ? Infinity : 0,
+              }}
+            />
+          ))}
+        </motion.span>
+      </span>
+    </motion.button>
+  );
+}
+
+function CompanyLogos() {
+  const companies = [
+    { name: 'Harvard', text: 'HARVARD' },
+    { name: 'Stanford', text: 'STANFORD' },
+    { name: 'MIT', text: 'MIT' },
+    { name: 'Oxford', text: 'OXFORD' },
+    { name: 'Cambridge', text: 'CAMBRIDGE' },
+  ];
+
+  return (
+    <div className="flex items-center justify-center gap-12 py-6 border-y border-white/10">
+      {companies.map((company, index) => (
+        <motion.div
+          key={company.name}
+          className="text-white/30 font-semibold text-sm tracking-[0.2em]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 + index * 0.1 }}
+        >
+          {company.text}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function CategoryCard({
+  title,
+  description,
+  icon,
+  color,
+  onClick,
+  delay,
+}: {
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  onClick: () => void;
+  delay: number;
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      className="group relative w-full text-left"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4 }}
+    >
+      <div className="relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] p-8 h-full">
+        <div
+          className="absolute top-0 left-0 w-full h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
+        />
+
+        <div className="flex items-start justify-between mb-6">
+          <span className="text-5xl">{icon}</span>
+          <motion.svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="text-white/20 group-hover:text-white/60 transition-colors"
+            whileHover={{ x: 4 }}
+          >
+            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </motion.svg>
+        </div>
+
+        <h3 className="text-2xl font-semibold text-white mb-2">{title}</h3>
+        <p className="text-white/50 text-base leading-relaxed">{description}</p>
+
+        <motion.div
+          className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          initial={{ scaleX: 0 }}
+          whileHover={{ scaleX: 1 }}
+          transition={{ duration: 0.4 }}
+        />
+      </div>
+    </motion.button>
+  );
+}
+
+function FeatureSection() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.from('.feature-title', {
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%',
+        },
+        y: 60,
+        opacity: 0,
+        duration: 1,
+        ease: 'power3.out',
+      });
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  const categories = [
+    {
+      title: 'US Visa Interview',
+      description: 'Practice with AI that simulates real embassy officers. Get feedback on your answers and improve your confidence.',
+      icon: '🛂',
+      color: '#10b981',
+      path: '/visa',
+    },
+    {
+      title: 'IELTS Speaking',
+      description: 'Prepare for all three parts of the IELTS speaking test. Get band score predictions and detailed feedback.',
+      icon: '🎓',
+      color: '#3b82f6',
+      path: '/chat/ielts',
+    },
+  ];
+
+  return (
+    <section ref={sectionRef} className="relative py-32 px-6">
+      <div className="max-w-5xl mx-auto">
+        <motion.p
+          className="text-emerald-400 text-sm font-medium tracking-[0.2em] mb-4"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          CHOOSE YOUR PATH
+        </motion.p>
+
+        <h2 className="feature-title text-4xl md:text-5xl lg:text-6xl font-light text-white mb-16 leading-tight">
+          Master your interview<br />
+          <span className="text-white/40">with AI-powered practice</span>
+        </h2>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {categories.map((cat, index) => (
+            <CategoryCard
+              key={cat.title}
+              {...cat}
+              onClick={() => navigate(cat.path)}
+              delay={0.2 + index * 0.15}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatsSection() {
+  const stats = [
+    { value: '50K+', label: 'Students Prepared' },
+    { value: '94%', label: 'Success Rate' },
+    { value: '150+', label: 'Countries' },
+    { value: '4.9', label: 'User Rating' },
+  ];
+
+  return (
+    <section className="py-24 px-6 border-y border-white/10">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              className="text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <div className="text-4xl md:text-5xl font-light text-white mb-2">{stat.value}</div>
+              <div className="text-white/40 text-sm tracking-wide">{stat.label}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialSection() {
+  const testimonials = [
+    {
+      quote: "This AI helped me prepare for my F1 visa interview. I got approved on my first attempt!",
+      name: "Aziza K.",
+      role: "Student, Tashkent",
+      image: "https://images.pexels.com/photos/3769021/pexels-photo-3769021.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+    },
+    {
+      quote: "The IELTS practice was incredibly realistic. I improved from Band 6 to 7.5 in just 2 weeks.",
+      name: "Rustam M.",
+      role: "Professional, Samarkand",
+      image: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+    },
+    {
+      quote: "Finally, an AI that understands context and gives meaningful feedback. Highly recommended!",
+      name: "Nilufar S.",
+      role: "Teacher, Bukhara",
+      image: "https://images.pexels.com/photos/3756679/pexels-photo-3756679.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+    },
+  ];
+
+  return (
+    <section className="py-32 px-6">
+      <div className="max-w-6xl mx-auto">
+        <motion.p
+          className="text-emerald-400 text-sm font-medium tracking-[0.2em] mb-4 text-center"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          SUCCESS STORIES
+        </motion.p>
+
+        <motion.h2
+          className="text-4xl md:text-5xl font-light text-white text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Trusted by thousands
+        </motion.h2>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {testimonials.map((testimonial, index) => (
+            <motion.div
+              key={testimonial.name}
+              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-8"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.15 }}
+            >
+              <p className="text-white/70 text-lg leading-relaxed mb-8">"{testimonial.quote}"</p>
+              <div className="flex items-center gap-4">
+                <img
+                  src={testimonial.image}
+                  alt={testimonial.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+                <div>
+                  <div className="text-white font-medium">{testimonial.name}</div>
+                  <div className="text-white/40 text-sm">{testimonial.role}</div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CTASection() {
+  const navigate = useNavigate();
+
+  return (
+    <section className="py-32 px-6">
+      <div className="max-w-4xl mx-auto text-center">
+        <motion.h2
+          className="text-4xl md:text-6xl font-light text-white mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Ready to succeed?
+        </motion.h2>
+
+        <motion.p
+          className="text-white/50 text-xl mb-12 max-w-2xl mx-auto"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+        >
+          Start practicing today and join thousands of students who have achieved their dreams.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+        >
+          <TalkButton onClick={() => navigate('/register')} />
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 py-12 px-6">
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="text-white/40 text-sm">
+          2024 prepAI. All rights reserved.
+        </div>
+        <div className="flex items-center gap-8">
+          <a href="/terms" className="text-white/40 text-sm hover:text-white transition-colors">Terms</a>
+          <a href="/privacy" className="text-white/40 text-sm hover:text-white transition-colors">Privacy</a>
+          <a href="/pricing" className="text-white/40 text-sm hover:text-white transition-colors">Pricing</a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+export default function CreativeLanding() {
+  const navigate = useNavigate();
+  const { scrollYProgress } = useScroll();
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
+
+  return (
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <Navbar />
+
+      <motion.section
+        className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
+        style={{ opacity: heroOpacity, scale: heroScale }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black z-10" />
+
+        <AnimatedPills />
+
+        <div className="relative z-20 text-center px-6 max-w-5xl mx-auto">
+          <motion.h1
+            className="text-5xl md:text-7xl lg:text-8xl font-light text-white mb-8 leading-[1.1]"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          >
+            AI Interview<br />
+            <span className="text-white/60">Practice Platform</span>
+          </motion.h1>
+
+          <motion.p
+            className="text-white/50 text-xl md:text-2xl max-w-2xl mx-auto mb-12 font-light"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            Prepare for visa interviews and IELTS speaking tests with realistic AI conversations.
+          </motion.p>
+
+          <motion.div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <button
+              onClick={() => navigate('/register')}
+              className="px-8 py-4 rounded-full bg-emerald-500 text-white font-semibold tracking-wide hover:bg-emerald-400 transition-colors"
+            >
+              START FREE
+            </button>
+            <button
+              onClick={() => navigate('/pricing')}
+              className="px-8 py-4 rounded-full bg-white/5 text-white font-semibold tracking-wide border border-white/10 hover:bg-white/10 transition-colors"
+            >
+              VIEW PRICING
+            </button>
+          </motion.div>
+        </div>
+
+        <motion.div
+          className="absolute bottom-12 z-20"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+        >
+          <TalkButton onClick={() => navigate('/visa')} />
+        </motion.div>
+      </motion.section>
+
+      <CompanyLogos />
+      <FeatureSection />
+      <StatsSection />
+      <TestimonialSection />
+      <CTASection />
+      <Footer />
+    </div>
+  );
+}
