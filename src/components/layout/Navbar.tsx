@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ export function Navbar() {
   const { isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,10 +20,33 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: "VISA PREP", href: "/visa" },
-    { name: "IELTS", href: "/chat/ielts" },
-    { name: "PRICING", href: "/pricing" },
+  const navLinks: Array<{
+    name: string;
+    href: string;
+    hasDropdown?: boolean;
+    items?: Array<{ name: string; href: string }>;
+  }> = [
+    {
+      name: "Features",
+      href: "#",
+      hasDropdown: true,
+      items: [
+        { name: "IELTS Prep", href: "/chat/ielts" },
+        { name: "Visa Interview", href: "/visa" },
+        { name: "Job Interview", href: "/chat/job" }
+      ]
+    },
+    { name: "Underlord", href: "/dashboard" },
+    {
+      name: "For work",
+      href: "#",
+      hasDropdown: true,
+      items: [
+        { name: "Teams", href: "#" },
+        { name: "Enterprise", href: "#" }
+      ]
+    },
+    { name: "Pricing", href: "/pricing" },
   ];
 
   return (
@@ -39,53 +63,122 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-20">
-          <Link to="/" className="flex items-center gap-3">
-            <span className="text-2xl font-bold tracking-tight text-white">
-              prep<span className="text-emerald-400">AI</span>
+          <Link to="/" className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white rounded" />
+              </div>
+            </div>
+            <span className="text-xl font-normal text-white">
+              descript
             </span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-12">
+          <div className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
-              <Link
+              <div
                 key={link.name}
-                to={link.href}
-                className="text-[13px] font-medium tracking-[0.1em] text-white/70 hover:text-white transition-colors"
+                className="relative"
+                onMouseEnter={() => link.hasDropdown && setOpenDropdown(link.name)}
+                onMouseLeave={() => setOpenDropdown(null)}
               >
-                {link.name}
-              </Link>
+                {link.hasDropdown ? (
+                  <>
+                    <button className="flex items-center gap-1 text-sm text-white/70 hover:text-white transition-colors">
+                      {link.name}
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    {openDropdown === link.name && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl py-2 min-w-[180px]"
+                      >
+                        {link.items?.map((item) => (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            {item.name}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    to={link.href}
+                    className="text-sm text-white/70 hover:text-white transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                )}
+              </div>
             ))}
           </div>
 
-          <div className="hidden lg:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-6">
+            <button
+              onClick={() => navigate("/pricing")}
+              className="text-sm text-white/70 hover:text-white transition-colors"
+            >
+              Contact sales
+            </button>
+
+            <div
+              className="relative"
+              onMouseEnter={() => setOpenDropdown('resources')}
+              onMouseLeave={() => setOpenDropdown(null)}
+            >
+              <button className="flex items-center gap-1 text-sm text-white/70 hover:text-white transition-colors">
+                Resources
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              {openDropdown === 'resources' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl py-2 min-w-[180px]"
+                >
+                  <Link to="/help" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Help Center
+                  </Link>
+                  <Link to="/activity" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Activity
+                  </Link>
+                </motion.div>
+              )}
+            </div>
+
             {isAuthenticated ? (
               <>
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="text-[13px] font-medium tracking-wide text-white/70 hover:text-white transition-colors"
+                  className="text-sm text-white/70 hover:text-white transition-colors"
                 >
                   Dashboard
                 </button>
                 <button
                   onClick={logout}
-                  className="px-5 py-2.5 rounded-full bg-white text-black text-[13px] font-semibold tracking-wide hover:bg-white/90 transition-colors"
+                  className="px-6 py-2 rounded-lg bg-black text-white text-sm font-medium hover:bg-gray-900 transition-colors border border-white/10"
                 >
-                  LOGOUT
+                  Logout
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => navigate("/login")}
-                  className="text-[13px] font-medium tracking-wide text-white/70 hover:text-white transition-colors"
+                  className="text-sm text-white/70 hover:text-white transition-colors"
                 >
                   Sign in
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="px-6 py-2.5 rounded-full bg-emerald-500 text-white text-[13px] font-semibold tracking-wide hover:bg-emerald-400 transition-colors"
+                  className="px-6 py-2 rounded-lg bg-black text-white text-sm font-medium hover:bg-gray-900 transition-colors border border-white/10"
                 >
-                  GET STARTED
+                  Sign up
                 </button>
               </>
             )}
@@ -111,27 +204,56 @@ export function Navbar() {
           >
             <div className="px-6 py-8 space-y-6">
               {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.href}
-                  className="block text-lg font-medium text-white/70 hover:text-white transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {link.name}
-                </Link>
+                <div key={link.name}>
+                  {link.hasDropdown ? (
+                    <div className="space-y-3">
+                      <div className="text-lg font-medium text-white/90">
+                        {link.name}
+                      </div>
+                      <div className="pl-4 space-y-2">
+                        {link.items?.map((item) => (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className="block text-sm text-white/70 hover:text-white transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {item.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Link
+                      to={link.href}
+                      className="block text-lg font-medium text-white/70 hover:text-white transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  )}
+                </div>
               ))}
+
               <div className="pt-6 border-t border-white/10 space-y-4">
+                <button
+                  onClick={() => { navigate("/pricing"); setMobileMenuOpen(false); }}
+                  className="block w-full text-left text-sm text-white/70"
+                >
+                  Contact sales
+                </button>
+
                 {isAuthenticated ? (
                   <>
                     <button
                       onClick={() => { navigate("/dashboard"); setMobileMenuOpen(false); }}
-                      className="block w-full text-left text-lg text-white/70"
+                      className="block w-full text-left text-sm text-white/70"
                     >
                       Dashboard
                     </button>
                     <button
                       onClick={() => { logout(); setMobileMenuOpen(false); }}
-                      className="w-full py-3 rounded-full bg-white text-black font-semibold"
+                      className="w-full py-3 rounded-lg bg-black text-white font-medium border border-white/10"
                     >
                       Logout
                     </button>
@@ -140,15 +262,15 @@ export function Navbar() {
                   <>
                     <button
                       onClick={() => { navigate("/login"); setMobileMenuOpen(false); }}
-                      className="block w-full text-left text-lg text-white/70"
+                      className="block w-full text-left text-sm text-white/70"
                     >
                       Sign in
                     </button>
                     <button
                       onClick={() => { navigate("/register"); setMobileMenuOpen(false); }}
-                      className="w-full py-3 rounded-full bg-emerald-500 text-white font-semibold"
+                      className="w-full py-3 rounded-lg bg-black text-white font-medium border border-white/10"
                     >
-                      Get Started
+                      Sign up
                     </button>
                   </>
                 )}
