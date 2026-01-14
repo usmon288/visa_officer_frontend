@@ -1,65 +1,47 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
+import { VideoStyleAvatar } from '@/components/VideoStyleAvatar';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-function LiveConversation() {
-  const [messages, setMessages] = useState<{ text: string; isAI: boolean }[]>([]);
-
-  const conversation = [
-    { text: "Tell me about your study plans in the US", isAI: true },
-    { text: "I'm planning to pursue Computer Science at MIT", isAI: false },
-    { text: "Why did you choose this specific program?", isAI: true },
-    { text: "The AI research lab aligns with my goals", isAI: false },
-    { text: "How will you finance your education?", isAI: true },
-    { text: "My family will support me financially", isAI: false },
-  ];
+function LiveVideoDemo() {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(true);
 
   useEffect(() => {
-    let index = 0;
     const interval = setInterval(() => {
-      if (index < conversation.length) {
-        setMessages(prev => [...prev, conversation[index]]);
-        index++;
-      } else {
-        setMessages([]);
-        index = 0;
-      }
-    }, 2000);
+      setIsSpeaking(prev => {
+        const newSpeaking = !prev;
+        if (newSpeaking) {
+          setIsListening(false);
+        } else {
+          setTimeout(() => setIsListening(true), 500);
+        }
+        return newSpeaking;
+      });
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-      <div className="w-full max-w-2xl px-6 space-y-4">
-        <AnimatePresence mode="popLayout">
-          {messages.map((msg, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 0.6, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.4 }}
-              className={`flex ${msg.isAI ? 'justify-start' : 'justify-end'}`}
-            >
-              <div
-                className={`px-6 py-3 rounded-2xl max-w-md backdrop-blur-sm ${
-                  msg.isAI
-                    ? 'bg-emerald-500/20 border border-emerald-500/30'
-                    : 'bg-white/10 border border-white/20'
-                }`}
-              >
-                <p className="text-white text-sm">{msg.text}</p>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 0.4, scale: 1 }}
+        transition={{ duration: 1 }}
+        className="blur-sm"
+      >
+        <VideoStyleAvatar
+          variant="visa-student"
+          isSpeaking={isSpeaking}
+          isListening={isListening}
+        />
+      </motion.div>
     </div>
   );
 }
@@ -433,7 +415,7 @@ export default function CreativeLanding() {
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black z-10" />
 
-        <LiveConversation />
+        <LiveVideoDemo />
 
         <div className="relative z-20 text-center px-6 max-w-5xl mx-auto">
           <motion.h1
