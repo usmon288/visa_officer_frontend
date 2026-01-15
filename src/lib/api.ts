@@ -232,17 +232,27 @@ export const interviewsAPI = {
    * Get conversation token for ElevenLabs
    */
   getConversationToken: async (agentId: string, interviewType: string) => {
-    return apiRequest<{
-      token: string;
-      conversation_id: string;
-      interview_id: string;
-    }>('/v1/voice/conversation_token/', {
-      method: 'POST',
-      body: JSON.stringify({
-        agent_id: agentId,
-        interview_type: interviewType,
-      }),
-    });
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/elevenlabs-conversation-token`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ agentId, interviewType }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to get token' }));
+      throw new Error(error.error || 'Failed to get conversation token');
+    }
+
+    return response.json();
   },
 
   /**

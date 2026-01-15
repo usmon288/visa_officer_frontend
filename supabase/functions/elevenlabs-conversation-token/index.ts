@@ -1,22 +1,26 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    const { agentId } = await req.json();
+    const { agentId, interviewType } = await req.json();
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 
     if (!ELEVENLABS_API_KEY) {
       console.error("ELEVENLABS_API_KEY is not configured");
-      throw new Error("ElevenLabs API key not configured");
+      throw new Error("ElevenLabs API key not configured. Please add it to your Supabase secrets.");
     }
 
     if (!agentId) {
@@ -24,7 +28,7 @@ serve(async (req) => {
       throw new Error("Agent ID is required");
     }
 
-    console.log(`Requesting conversation token for agent: ${agentId}`);
+    console.log(`Requesting conversation token for agent: ${agentId}, type: ${interviewType}`);
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${agentId}`,
@@ -44,17 +48,30 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Successfully obtained conversation token");
 
-    return new Response(JSON.stringify({ token: data.token }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        token: data.token,
+        conversation_id: data.conversation_id || crypto.randomUUID(),
+        interview_id: crypto.randomUUID(),
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error in elevenlabs-conversation-token:", error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       }
     );
   }
