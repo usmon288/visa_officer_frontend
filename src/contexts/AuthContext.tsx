@@ -111,10 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (data: RegisterData) => {
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
+        emailRedirectTo: undefined,
         data: {
           full_name: data.full_name,
           phone: data.phone,
@@ -124,6 +125,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (authData.session) {
+      setUser(authData.user);
+      setSession(authData.session);
+      if (authData.user) {
+        const profileData = await fetchProfile(authData.user.id);
+        setProfile(profileData);
+      }
     }
   };
 

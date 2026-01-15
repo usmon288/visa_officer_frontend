@@ -51,10 +51,10 @@ export default function Register() {
 
       toast({
         title: 'Registration successful!',
-        description: 'You can now log in to your account.',
+        description: 'Welcome to prepAI',
       });
 
-      navigate('/login');
+      navigate('/dashboard');
     } catch (error) {
       toast({
         variant: 'destructive',
